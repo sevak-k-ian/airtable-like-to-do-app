@@ -1,0 +1,23 @@
+# To ignore a specific file: my_file.log
+ideas_and_todos.md
+
+# To ignore a whole directory: my_directory/
+# To ignore all files of a certain type: *.log
+# To ignore files in a specific directory: logs/*.log
+
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PyCharm files
+.idea/
+
+# Other
+.DS_Store
+*.local
