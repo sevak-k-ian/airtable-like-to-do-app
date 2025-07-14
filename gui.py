@@ -185,6 +185,7 @@ create_todo_button = None
 
 # To-do grouped list view
 todo_list_view = None
+filter_bar = None
 
 # This dictionary will store the user's selections
 active_filters = {}
@@ -255,7 +256,8 @@ def show_main_page():
         :return: main_page column element
     """
     global main_page
-    main_page = ui.column().classes("w-full h-screen justify-center items-center")
+    main_page = ui.column().classes("w-full h-screen")
+    # main_page = ui.column().classes("w-full h-screen justify-center items-center")
     return main_page
 
 
@@ -308,8 +310,12 @@ def show_todo_list_view():
         Return the layout that will contain the concatenated list view, grouped (for the moment) by source
         :return: todo_list_view column element
     """
-    global todo_list_view
-    todo_list_view = ui.column().classes("w-full h-screen justify-center items-center")
+    global todo_list_view, create_todo_button, filter_bar
+    with ui.row().classes("w-full justify-between items-center"):
+        filter_bar = create_filter_bar(active_filters)
+        create_todo_button = show_create_todo_button()
+    with ui.column().classes("w-full"):
+        create_grouped_list_view(todos_list=todos_sample, property_used_for_grouping="source")
 
 
 def show_todo_details_window(todo_to_show: dict):
@@ -409,6 +415,13 @@ def show_todo_details_window(todo_to_show: dict):
                             'dense borderless')
 
 
+def show_create_todo_button():
+    global create_todo_button
+    create_todo_button = ui.button(text="Create todo").classes(airtable_create_button_style).props(
+        'no-caps')
+    return create_todo_button
+
+
 def show_create_todo_window():
     """
         Return the card element that reprensents the window to create a new to-do.
@@ -430,8 +443,7 @@ def show_create_todo_window():
                     todo_header_input = ui.input(placeholder="New_todo").classes(airtable_todo_header_style).props(
                         "borderless")
                     # Create to-do button element
-                    create_todo_button = ui.button(text="Create todo").classes(airtable_create_button_style).props(
-                        'no-caps')
+                    create_todo_button = show_create_todo_button()
 
                 # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT NEW TO-DO : PRIORITY, STATUS, FIRE, SOURCE
                 global status_property_h3, priority_property_h3, fire_property_h3, source_property_h3
@@ -513,36 +525,7 @@ def show_create_todo_window():
 # LAYOUT LOGIC
 ##############################################
 with show_main_page():
-    # show_todo_details_window(todos_sample[1]["todo_name"])
-    # show_create_todo_window()
-    # create_grouped_list_view(todos_list=todos_sample, property_used_for_grouping="source")
-    # create_filter_dropdown('Status', STATUS_OPTIONS, active_filters)
-    create_filter_bar(active_filters)
+    show_todo_list_view()
 
 # Testing
 ui.run(language='fr')
-
-# output: list = [{'Completed': [
-#     {'todo_name': 'Finalize Q3 Marketing Report', 'priority': 'High', 'source': 'Email from Management',
-#      'fire_or_clock': True, 'deadline': '2025-07-12T09:42:44.168951+02:00', 'status': 'Completed',
-#      'files': ['Q3_report_final_v2.docx', 'presentation_slides.pptx'],
-#      'comments': ['Approved by Jane Doe.', 'Awaiting final sign-off from legal.'],
-#      'created_time': '2025-07-04T09:42:44.168951+02:00', 'modified_time': '2025-07-12T05:42:44.168951+02:00'},
-#     {'todo_name': 'Develop User Authentication Feature', 'priority': 'High', 'source': 'Project Sprint Plan',
-#      'fire_or_clock': True, 'deadline': '2025-07-09T09:42:44.168951+02:00', 'status': 'Completed',
-#      'files': ['auth_module.py', 'user_schema.sql'],
-#      'comments': ['Deployed to production in v1.2.', 'Passed all security checks.'],
-#      'created_time': '2025-06-19T09:42:44.168951+02:00', 'modified_time': '2025-07-09T08:42:44.168951+02:00'}],
-#                  'Todo': [{'todo_name': 'Book Flights for Paris Conference', 'priority': 'Medium',
-#                            'source': 'Personal Reminder', 'fire_or_clock': False,
-#                            'deadline': '2025-06-29T09:42:44.168951+02:00', 'status': 'Todo',
-#                            'files': ['flight_confirmation_AF123.pdf', 'hotel_booking.pdf'],
-#                            'comments': ['Got a window seat.', 'Total cost was within budget.'],
-#                            'created_time': '2025-06-14T09:42:44.168951+02:00',
-#                            'modified_time': '2025-06-29T09:42:44.168951+02:00'},
-#                           {'todo_name': 'Zizi pote', 'priority': 'Medium', 'source': 'Personal Reminder',
-#                            'fire_or_clock': False, 'deadline': '2025-06-29T09:42:44.168951+02:00', 'status': 'Todo',
-#                            'files': ['flight_confirmation_AF123.pdf', 'hotel_booking.pdf'],
-#                            'comments': ['Got a window seat.', 'Total cost was within budget.'],
-#                            'created_time': '2025-06-14T09:42:44.168951+02:00',
-#                            'modified_time': '2025-06-29T09:42:44.168951+02:00'}]}]
