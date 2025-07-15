@@ -257,7 +257,20 @@ def show_main_page():
     """
     global main_page
     main_page = ui.column().classes("w-full h-screen")
-    # main_page = ui.column().classes("w-full h-screen justify-center items-center")
+    with main_page:
+        with ui.column().classes("w-full h-screen"):
+            # 1. Build the creation dialog. It will be invisible until opened.
+            create_dialog = build_create_todo_dialog()
+
+            # 2. Build the main list view.
+            with ui.row().classes('w-full justify-between items-center p-4 border-b'):
+                create_filter_bar(active_filters)
+                # 3. The button now opens the dialog.
+                ui.button('New To-Do', icon='add', on_click=create_dialog.open).props('color=primary')
+
+            # The rest of your list view
+            with ui.column().classes("w-full"):
+                create_grouped_list_view(todos_list=todos_sample, property_used_for_grouping="source")
     return main_page
 
 
@@ -422,29 +435,22 @@ def show_create_todo_button():
     return create_todo_button
 
 
-def show_create_todo_window():
-    """
-        Return the card element that reprensents the window to create a new to-do.
-        :param
-        :return: to-do creation window card element
-    """
-    global todo_creation_window, todo_header_input, create_todo_button
-    # Define to-do creation window as a big card element
-    todo_creation_window = ui.card().classes("w-4/5 h-full")
-
-    # DESIGN OF THAT TO-DO CREATION CARD ELEMENT
-    with todo_creation_window:
+def build_create_todo_dialog() -> ui.dialog:
+    """Builds the 'Create To-Do' dialog window with its content."""
+    with ui.dialog() as dialog, ui.card().classes("w-2/3 h-5/6"):
         with ui.column().classes('w-full h-full'):
-            # Enable scrolling inside that card if children elements take more space than original screen height
-            with ui.scroll_area().classes('flex-grow'):
-                # HEADER SECTION OF TO-DO CREATION CONTAINING TO-DO NAME AND "CREATE TODO" BUTTON
-                with ui.row().classes("w-full no-wrap items-center"):
-                    # To-do name header element
-                    todo_header_input = ui.input(placeholder="New_todo").classes(airtable_todo_header_style).props(
-                        "borderless")
-                    # Create to-do button element
-                    create_todo_button = show_create_todo_button()
+            # HEADER SECTION
+            with ui.row().classes("w-full no-wrap items-center p-2"):
+                ui.input(placeholder="Enter new to-do name...").classes(airtable_todo_header_style).props("borderless")
+                # This button will eventually save the new to-do
+                ui.button("Create", on_click=lambda: (
+                    ui.notify("To-do Created!"),
+                    dialog.close()  # Close the dialog after creation
+                )).classes(airtable_create_button_style).props('no-caps')
 
+            # CONTENT SECTION (you can add the rest of your form fields here)
+            with ui.scroll_area().classes('w-full flex-grow p-4'):
+                ui.label("Add properties for your new to-do below.")
                 # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT NEW TO-DO : PRIORITY, STATUS, FIRE, SOURCE
                 global status_property_h3, priority_property_h3, fire_property_h3, source_property_h3
                 global status_dropdown_selector, priority_dropdown_selector, fire_dropdown_selector, source_dropdown_selector
@@ -520,12 +526,13 @@ def show_create_todo_window():
                             airtable_upload_zone_style).props(
                             'dense borderless')
 
+    return dialog
+
 
 ##############################################
 # LAYOUT LOGIC
 ##############################################
-with show_main_page():
-    show_todo_list_view()
+show_main_page()
 
 # Testing
 ui.run(language='fr')
