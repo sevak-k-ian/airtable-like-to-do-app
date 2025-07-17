@@ -23,7 +23,7 @@ FORMATTED_FR_DATE = now_french.strftime("%d/%m/%Y %H:%M")
 STATUS_OPTIONS = ["Todo", "Done"]
 PRIORITY_OPTIONS = ["High", "Medium", "Low"]
 SOURCE_OPTIONS = ["🔒 Perso", "👩‍❤️‍👨 Famille", "👶 Yeraz", "🤱 Mama", "💼 Hameaux Légers"]
-FIRE_OPTIONS = ["🔥", "⏰"]
+FIRE_OPTIONS = ["🔥", "⏰", ""]
 
 ##############################################
 # DUMMY DICT AND DATA FOR TESTING
@@ -34,9 +34,9 @@ todos_sample = [
         "todo_name": "Finalize Q3 Marketing Report",
         "priority": "High",
         "source": "🔒 Perso",
-        "fire_or_clock": True,  # True for "fire" (urgent)
+        "fire_or_clock": "🔥",  # True for "fire" (urgent)
         "deadline": (now_french - datetime.timedelta(days=2)),
-        "status": "Completed",
+        "status": "Done",
         "files": ["Q3_report_final_v2.docx", "presentation_slides.pptx"],
         "comments": ["Approved by Jane Doe.", "Awaiting final sign-off from legal."],
         "created_time": (now_french - datetime.timedelta(days=10)),
@@ -46,9 +46,9 @@ todos_sample = [
         "todo_name": "Develop User Authentication Feature",
         "priority": "High",
         "source": "🔒 Perso",
-        "fire_or_clock": True,
+        "fire_or_clock": "🔥",
         "deadline": (now_french - datetime.timedelta(days=5)),
-        "status": "Completed",
+        "status": "Done",
         "files": ["auth_module.py", "user_schema.sql"],
         "comments": ["Deployed to production in v1.2.", "Passed all security checks."],
         "created_time": (now_french - datetime.timedelta(days=25)),
@@ -58,7 +58,7 @@ todos_sample = [
         "todo_name": "Book Flights for Paris Conference",
         "priority": "Medium",
         "source": "👩‍❤️‍👨 Famille",
-        "fire_or_clock": False,  # False for "clock" (scheduled task)
+        "fire_or_clock": "",  # False for "clock" (scheduled task)
         "deadline": (now_french - datetime.timedelta(days=15)),
         "status": "Todo",
         "files": ["flight_confirmation_AF123.pdf", "hotel_booking.pdf"],
@@ -70,7 +70,7 @@ todos_sample = [
         "todo_name": "Zizi pote",
         "priority": "Medium",
         "source": "🤱 Mama",
-        "fire_or_clock": False,  # False for "clock" (scheduled task)
+        "fire_or_clock": "⏰",  # False for "clock" (scheduled task)
         "deadline": (now_french - datetime.timedelta(days=15)),
         "status": "Todo",
         "files": ["flight_confirmation_AF123.pdf", "hotel_booking.pdf"],
@@ -190,6 +190,10 @@ filter_bar = None
 # This dictionary will store the user's selections
 active_filters = {}
 
+# We create placeholders for the dialog and its content area
+details_dialog = None
+details_content_area = None
+
 
 ##############################################
 # CLI FUNCTIONS
@@ -219,8 +223,7 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
                 for todo in todos:
                     # The main row for a single to-do item
                     with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer').on(
-                            'click', lambda t=todo: ui.notify(f"Clicked {t['todo_name']}")
-                    ):
+                            'click', lambda t=todo: open_todo_details(t)):
                         # To-do name (takes up all available space)
                         ui.label(todo['todo_name']).classes('flex-grow')
 
@@ -272,6 +275,13 @@ def show_main_page():
             with ui.column().classes("w-full"):
                 create_grouped_list_view(todos_list=todos_sample, property_used_for_grouping="source")
     return main_page
+
+
+# Orchestrates opening the details dialog ---
+def open_todo_details(todo: dict):
+    """Clears, populates, and opens the details dialog for a given to-do."""
+    show_todo_details_window(todo)
+    details_dialog.open()
 
 
 def create_filter_dropdown(name: str, options: List[str], filters: Dict):
@@ -332,100 +342,96 @@ def show_todo_list_view():
 
 
 def show_todo_details_window(todo_to_show: dict):
-    """
-        Return the card element that reprensents and stores all information about an existing to-do.
-        :param todo_to_show:
-        :return: to-do details window card element
-    """
-    global todo_details_window, todo_header_input, mark_done_btn
-    # Define to-do details window as a big card element
-    todo_details_window = ui.card().classes("w-full h-full")
+    """Populates the details_content_area element with the UI for a specific to-do."""
+    global details_content_area
 
-    # DESIGN OF THAT TO-DO DETAILS CARD ELEMENT
-    with todo_details_window:
-        with ui.column().classes('w-full h-full'):
-            # Enable scrolling inside that card if children elements take more space than original screen height
-            with ui.scroll_area().classes('flex-grow'):
-                # HEADER SECTION OF TO-DO DETAILS CONTAINING TO-DO NAME AND "MARK DONE" BUTTON
-                with ui.row().classes("w-full no-wrap items-center"):
-                    # To-do name header element
-                    todo_header_input = ui.input(value=f'{todo_to_show}').classes(airtable_todo_header_style).props(
-                        "borderless")
-                    # Mark done button element
-                    mark_done_btn = ui.button(text="Mark as done").classes(airtable_done_button_style).props('no-caps')
+    # Clear any previous content
+    details_content_area.clear()
 
-                # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT TO-DO : PRIORITY, STATUS, FIRE, SOURCE
-                global status_property_h3, priority_property_h3, fire_property_h3, source_property_h3
-                global status_dropdown_selector, priority_dropdown_selector, fire_dropdown_selector, source_dropdown_selector
-                # Display this section as a row of 4 cells (grid element)
-                with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
-                    with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
-                        # Cell N°1/4 : to-do status
-                        with ui.column():
-                            status_property_h3 = ui.label("Status").classes(airtable_todo_properties_heading)
-                            status_dropdown_selector = ui.select(options=STATUS_OPTIONS, value="Todo").classes(
-                                airtable_property_selector_style).props('dense borderless')
-                        # Cell N°2/4 : to-do priority
-                        with ui.column():
-                            priority_property_h3 = ui.label("Priorité").classes(airtable_todo_properties_heading)
-                            priority_dropdown_selector = ui.select(options=PRIORITY_OPTIONS,
-                                                                   value="High").classes(
-                                airtable_property_selector_style).props('dense borderless')
-                        # Cell N°3/4 : to-do fire
-                        with ui.column():
-                            fire_property_h3 = ui.label("Fire").classes(airtable_todo_properties_heading)
-                            fire_dropdown_selector = ui.select(options=PRIORITY_OPTIONS).classes(
-                                airtable_property_selector_style).props('dense borderless')
-                        # Cell N°4/4 : to-do source
-                        with ui.column():
-                            source_property_h3 = ui.label("Source").classes(airtable_todo_properties_heading)
-                            source_dropdown_selector = ui.select(
-                                options=SOURCE_OPTIONS).classes(
-                                airtable_property_selector_style).props('dense borderless')
+    # Build the UI inside the content area
+    with details_content_area:
+        # The scroll area is now inside the content area
+        with ui.scroll_area().classes('w-full h-full'):
+            # HEADER SECTION
+            with ui.row().classes("w-full no-wrap items-center p-2"):
+                # Pass the actual to-do name to the input
+                ui.input(value=todo_to_show['todo_name']).classes(airtable_todo_header_style).props("borderless")
+                ui.button(text="Mark as done").classes(airtable_done_button_style).props('no-caps')
 
-                # 2nd SECTION TO DEFINE DATE INFO ABOUT TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
-                global deadline_property_h3, created_time_property_h3, modified_time_property_h3, attachment_property_h3
-                global created_time_label, modified_time_label, upload_file_property
-                # Display this section as a row of 3 cells (grid element)
-                with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
-                    with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
-                        # Cell N°1/3 : to-do deadline
-                        with ui.column():
-                            deadline_property_h3 = ui.label("Deadline").classes(airtable_todo_properties_heading)
-                            with ui.input().props("dense borderless").classes(airtable_property_selector_style) as date:
-                                with ui.menu().props('no-parent-event') as menu:
-                                    with ui.date().bind_value(date).props('mask="DD/MM/YYYY"'):
-                                        with ui.row().classes('justify-end'):
-                                            ui.button('Close', on_click=menu.close).props('flat')
-                                with date.add_slot('append'):
-                                    ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
-                        # Cell N°2/3 : to-do creation date
-                        with ui.column():
-                            created_time_property_h3 = ui.label("Created on").classes(airtable_todo_properties_heading)
-                            created_time_label = ui.label(text="12/03/2025").classes(airtable_date_label_style).props(
-                                'dense borderless')
-                        # Cell N°2/3 : to-do last modified time
-                        with ui.column():
-                            modified_time_property_h3 = ui.label("Modified on").classes(
-                                airtable_todo_properties_heading)
-                            modified_time_label = ui.label(text="28/05/2025").classes(airtable_date_label_style).props(
-                                'dense borderless')
+            # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT TO-DO : PRIORITY, STATUS, FIRE, SOURCE
+            global status_property_h3, priority_property_h3, fire_property_h3, source_property_h3
+            global status_dropdown_selector, priority_dropdown_selector, fire_dropdown_selector, source_dropdown_selector
+            # Display this section as a row of 4 cells (grid element)
+            with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
+                with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
+                    # Cell N°1/4 : to-do status
+                    with ui.column():
+                        status_property_h3 = ui.label("Status").classes(airtable_todo_properties_heading)
+                        status_dropdown_selector = ui.select(options=STATUS_OPTIONS,
+                                                             value=todo_to_show["status"]).classes(
+                            airtable_property_selector_style).props('dense borderless')
+                    # Cell N°2/4 : to-do priority
+                    with ui.column():
+                        priority_property_h3 = ui.label("Priorité").classes(airtable_todo_properties_heading)
+                        priority_dropdown_selector = ui.select(options=PRIORITY_OPTIONS,
+                                                               value=todo_to_show["priority"]).classes(
+                            airtable_property_selector_style).props('dense borderless')
+                    # Cell N°3/4 : to-do fire
+                    with ui.column():
+                        fire_property_h3 = ui.label("Fire").classes(airtable_todo_properties_heading)
+                        fire_dropdown_selector = ui.select(options=FIRE_OPTIONS,
+                                                           value=todo_to_show["fire_or_clock"]).classes(
+                            airtable_property_selector_style).props('dense borderless')
+                    # Cell N°4/4 : to-do source
+                    with ui.column():
+                        source_property_h3 = ui.label("Source").classes(airtable_todo_properties_heading)
+                        source_dropdown_selector = ui.select(
+                            options=SOURCE_OPTIONS, value=todo_to_show["source"]).classes(
+                            airtable_property_selector_style).props('dense borderless')
 
-                # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
-                global comments_property_h3, comment_editor_property
-                # Display this section as a row containing 2 columns
-                with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
-                    # Column N°1/2 : comments section
-                    with ui.column().classes('w-[75%]'):
-                        comments_property_h3 = ui.label("Comments").classes(airtable_todo_properties_heading)
-                        comment_editor_property = ui.editor(placeholder='Type something here').classes("w-full")
-                    # Column N°2/2 : file upload section
-                    with ui.column().classes('w-[25%]'):
-                        attachment_property_h3 = ui.label("Attachments").classes(airtable_todo_properties_heading)
-                        upload_file_property = ui.upload(
-                            on_upload=lambda e: ui.notify(f'Uploaded {e.name}')).classes(
-                            airtable_upload_zone_style).props(
+            # 2nd SECTION TO DEFINE DATE INFO ABOUT TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
+            global deadline_property_h3, created_time_property_h3, modified_time_property_h3, attachment_property_h3
+            global created_time_label, modified_time_label, upload_file_property
+            # Display this section as a row of 3 cells (grid element)
+            with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
+                with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
+                    # Cell N°1/3 : to-do deadline
+                    with ui.column():
+                        deadline_property_h3 = ui.label("Deadline").classes(airtable_todo_properties_heading)
+                        with ui.input().props("dense borderless").classes(airtable_property_selector_style) as date:
+                            with ui.menu().props('no-parent-event') as menu:
+                                with ui.date().bind_value(date).props('mask="DD/MM/YYYY"'):
+                                    with ui.row().classes('justify-end'):
+                                        ui.button('Close', on_click=menu.close).props('flat')
+                            with date.add_slot('append'):
+                                ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
+                    # Cell N°2/3 : to-do creation date
+                    with ui.column():
+                        created_time_property_h3 = ui.label("Created on").classes(airtable_todo_properties_heading)
+                        created_time_label = ui.label(text="12/03/2025").classes(airtable_date_label_style).props(
                             'dense borderless')
+                    # Cell N°2/3 : to-do last modified time
+                    with ui.column():
+                        modified_time_property_h3 = ui.label("Modified on").classes(
+                            airtable_todo_properties_heading)
+                        modified_time_label = ui.label(text="28/05/2025").classes(airtable_date_label_style).props(
+                            'dense borderless')
+
+            # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
+            global comments_property_h3, comment_editor_property
+            # Display this section as a row containing 2 columns
+            with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
+                # Column N°1/2 : comments section
+                with ui.column().classes('w-[75%]'):
+                    comments_property_h3 = ui.label("Comments").classes(airtable_todo_properties_heading)
+                    comment_editor_property = ui.editor(placeholder='Type something here').classes("w-full")
+                # Column N°2/2 : file upload section
+                with ui.column().classes('w-[25%]'):
+                    attachment_property_h3 = ui.label("Attachments").classes(airtable_todo_properties_heading)
+                    upload_file_property = ui.upload(
+                        on_upload=lambda e: ui.notify(f'Uploaded {e.name}')).classes(
+                        airtable_upload_zone_style).props(
+                        'dense borderless')
 
 
 def show_create_todo_button():
@@ -530,9 +536,15 @@ def build_create_todo_dialog() -> ui.dialog:
 
 
 ##############################################
-# LAYOUT LOGIC
+# MAIN LAYOUT LOGIC
 ##############################################
-show_main_page()
+with show_main_page():
+    # --- NEW: Create the reusable details dialog here. It starts hidden because it is not .open() ---
+    with ui.dialog() as details_dialog, ui.card().classes("w-5/6 h-5/6"):
+        # This column is the container for the dynamic content
+        details_content_area = ui.column().classes('w-full h-full')
+
+
 
 # Testing
 ui.run(language='fr')
