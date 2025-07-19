@@ -1,6 +1,7 @@
-##############################################
-# LIBRARIES AND MODULES
-##############################################
+# TODO Allew the todo details dialog box to be wider and bigger
+
+############# TITLE LIBRARIES AND MODULES #############
+pass
 from nicegui import app, ui
 import datetime
 # Get current time to generate realistic timestamps
@@ -8,9 +9,9 @@ from zoneinfo import ZoneInfo
 from collections import defaultdict
 from typing import List, Dict, Callable
 
-##############################################
-# CONSTANT AND GLOBAL VARIABLES
-##############################################
+
+############# TITLE CONSTANT AND GLOBAL VARIABLES #############
+pass
 # 1. Get the current time in UTC (as you did)
 now_utc = datetime.datetime.now(datetime.timezone.utc)
 # 2. Convert it to the French timezone (Europe/Paris)
@@ -25,10 +26,9 @@ PRIORITY_OPTIONS = ["High", "Medium", "Low"]
 SOURCE_OPTIONS = ["🔒 Perso", "👩‍❤️‍👨 Famille", "👶 Yeraz", "🤱 Mama", "💼 Hameaux Légers"]
 FIRE_OPTIONS = ["🔥", "⏰", ""]
 
-##############################################
-# DUMMY DICT AND DATA FOR TESTING
-##############################################
 
+############# TITLE DUMMY DICT AND DATA FOR TESTING #############
+pass
 todos_sample = [
     {
         "todo_name": "Finalize Q3 Marketing Report",
@@ -80,10 +80,10 @@ todos_sample = [
     }
 ]
 
-##############################################
-# AIRTABLE-LIKE STYLE DEFINITIONS
-##############################################
-# Load the "Inter" font from Google Fonts for the whole page.
+
+############# TITLE DUMMY DICT AND DATA FOR TESTING #############
+pass
+# Load the "Inter" font from Google Fonts for the whole page
 ui.add_head_html('''
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -150,9 +150,9 @@ PRIORITY_COLORS = {
     'Medium': 'bg-orange-200 text-orange-800',
     'High': 'bg-red-200 text-red-800',
 }
-##############################################
-# GLOBAL VARIABLES
-##############################################
+
+############# TITLE GLOBAL VARIABLES #############
+pass
 # UI ELEMENTS VARIABLES
 # Main page elements
 main_page = None
@@ -182,6 +182,7 @@ comment_editor_property = None
 # To-do creation window elements
 todo_creation_window = None
 create_todo_button = None
+new_todo_name = None
 
 # To-do grouped list view
 todo_list_view = None
@@ -195,9 +196,9 @@ details_dialog = None
 details_content_area = None
 
 
-##############################################
-# CLI FUNCTIONS
-##############################################
+
+############# TITLE CLI FUNCTIONS #############
+pass
 def group_todos_by_property(todos_list: list, grouping_property: str) -> dict:
     """Groups a list of to-do dictionaries by their 'status' key."""
     grouped = defaultdict(list)
@@ -250,9 +251,27 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
                     ui.separator()
 
 
-##############################################
-# LAYOUT FUNCTIONS
-##############################################
+def add_todo_to_list():
+    global new_todo_name, created_time_label, upload_file_property, modified_time_label, comment_editor_property, \
+        status_dropdown_selector, priority_dropdown_selector, source_dropdown_selector, fire_dropdown_selector
+    todo_to_be_added : dict = {
+        "todo_name": new_todo_name.value,
+        "priority": priority_dropdown_selector.value,
+        "source": source_dropdown_selector.value,
+        "fire_or_clock": fire_dropdown_selector.value,
+        "deadline": "⚠️ TTTTTESSSSTTT A CORRIGER",
+        "status": status_dropdown_selector.value,
+        "files": "⚠️ TTTTTESSSSTTT A CORRIGER",
+        "comments": comment_editor_property.value,
+        "created_time": created_time_label.text,
+        "modified_time": modified_time_label.text
+    }
+
+    todos_sample.append(todo_to_be_added)
+    print(todos_sample)
+
+############# TITLE LAYOUT FUNCTIONS #############
+pass
 def show_main_page():
     """
         Return the layout that will contain the to-do details window and to-do creation window.
@@ -443,14 +462,17 @@ def show_create_todo_button():
 
 def build_create_todo_dialog() -> ui.dialog:
     """Builds the 'Create To-Do' dialog window with its content."""
+    global new_todo_name
     with ui.dialog() as dialog, ui.card().classes("w-2/3 h-5/6"):
         with ui.column().classes('w-full h-full'):
             # HEADER SECTION
             with ui.row().classes("w-full no-wrap items-center p-2"):
-                ui.input(placeholder="Enter new to-do name...").classes(airtable_todo_header_style).props("borderless")
+                new_todo_name = ui.input(placeholder="Enter new to-do name...").classes(
+                    airtable_todo_header_style).props("borderless")
                 # This button will eventually save the new to-do
                 ui.button("Create", on_click=lambda: (
                     ui.notify("To-do Created!"),
+                    add_todo_to_list(),
                     dialog.close()  # Close the dialog after creation
                 )).classes(airtable_create_button_style).props('no-caps')
 
@@ -477,7 +499,7 @@ def build_create_todo_dialog() -> ui.dialog:
                         # Cell N°3/4 : to-do fire
                         with ui.column():
                             fire_property_h3 = ui.label("Fire").classes(airtable_todo_properties_heading)
-                            fire_dropdown_selector = ui.select(options=PRIORITY_OPTIONS).classes(
+                            fire_dropdown_selector = ui.select(options=FIRE_OPTIONS).classes(
                                 airtable_property_selector_style).props('dense borderless')
                         # Cell N°4/4 : to-do source
                         with ui.column():
@@ -535,16 +557,14 @@ def build_create_todo_dialog() -> ui.dialog:
     return dialog
 
 
-##############################################
-# MAIN LAYOUT LOGIC
-##############################################
+############# TITLE MAIN LAYOUT LOGIC #############
+pass
 with show_main_page():
     # --- NEW: Create the reusable details dialog here. It starts hidden because it is not .open() ---
-    with ui.dialog() as details_dialog, ui.card().classes("w-5/6 h-5/6"):
+    with ui.dialog() as details_dialog, ui.card().classes("w-full h-full"):
         # This column is the container for the dynamic content
         details_content_area = ui.column().classes('w-full h-full')
 
-
-
 # Testing
 ui.run(language='fr')
+
