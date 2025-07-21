@@ -1,5 +1,3 @@
-# TODO Allew the todo details dialog box to be wider and bigger
-
 ############# TITLE LIBRARIES AND MODULES #############
 pass
 from nicegui import app, ui
@@ -9,9 +7,9 @@ from zoneinfo import ZoneInfo
 from collections import defaultdict
 from typing import List, Dict, Callable
 
-
 ############# TITLE CONSTANT AND GLOBAL VARIABLES #############
 pass
+
 # 1. Get the current time in UTC (as you did)
 now_utc = datetime.datetime.now(datetime.timezone.utc)
 # 2. Convert it to the French timezone (Europe/Paris)
@@ -25,7 +23,6 @@ STATUS_OPTIONS = ["Todo", "Done"]
 PRIORITY_OPTIONS = ["High", "Medium", "Low"]
 SOURCE_OPTIONS = ["🔒 Perso", "👩‍❤️‍👨 Famille", "👶 Yeraz", "🤱 Mama", "💼 Hameaux Légers"]
 FIRE_OPTIONS = ["🔥", "⏰", ""]
-
 
 ############# TITLE DUMMY DICT AND DATA FOR TESTING #############
 pass
@@ -79,7 +76,6 @@ todos_sample = [
         "modified_time": (now_french - datetime.timedelta(days=15)),
     }
 ]
-
 
 ############# TITLE DUMMY DICT AND DATA FOR TESTING #############
 pass
@@ -195,10 +191,10 @@ active_filters = {}
 details_dialog = None
 details_content_area = None
 
-
-
 ############# TITLE CLI FUNCTIONS #############
 pass
+
+
 def group_todos_by_property(todos_list: list, grouping_property: str) -> dict:
     """Groups a list of to-do dictionaries by their 'status' key."""
     grouped = defaultdict(list)
@@ -254,7 +250,7 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
 def add_todo_to_list():
     global new_todo_name, created_time_label, upload_file_property, modified_time_label, comment_editor_property, \
         status_dropdown_selector, priority_dropdown_selector, source_dropdown_selector, fire_dropdown_selector
-    todo_to_be_added : dict = {
+    todo_to_be_added: dict = {
         "todo_name": new_todo_name.value,
         "priority": priority_dropdown_selector.value,
         "source": source_dropdown_selector.value,
@@ -270,8 +266,12 @@ def add_todo_to_list():
     todos_sample.append(todo_to_be_added)
     print(todos_sample)
 
+
 ############# TITLE LAYOUT FUNCTIONS #############
 pass
+
+
+# Main Page layout
 def show_main_page():
     """
         Return the layout that will contain the to-do details window and to-do creation window.
@@ -296,13 +296,7 @@ def show_main_page():
     return main_page
 
 
-# Orchestrates opening the details dialog ---
-def open_todo_details(todo: dict):
-    """Clears, populates, and opens the details dialog for a given to-do."""
-    show_todo_details_window(todo)
-    details_dialog.open()
-
-
+# To-do list grouped view layout
 def create_filter_dropdown(name: str, options: List[str], filters: Dict):
     """Creates a robust, Airtable-style filter button with its own menu."""
 
@@ -358,6 +352,13 @@ def show_todo_list_view():
         create_todo_button = show_create_todo_button()
     with ui.column().classes("w-full"):
         create_grouped_list_view(todos_list=todos_sample, property_used_for_grouping="source")
+
+
+# To-do details view layout
+def open_todo_details(todo: dict):
+    """Clears, populates, and opens the details dialog for a given to-do."""
+    show_todo_details_window(todo)
+    details_dialog.open()
 
 
 def show_todo_details_window(todo_to_show: dict):
@@ -453,6 +454,7 @@ def show_todo_details_window(todo_to_show: dict):
                         'dense borderless')
 
 
+# Create new to-do view layout
 def show_create_todo_button():
     global create_todo_button
     create_todo_button = ui.button(text="Create todo").classes(airtable_create_button_style).props(
@@ -561,10 +563,9 @@ def build_create_todo_dialog() -> ui.dialog:
 pass
 with show_main_page():
     # --- NEW: Create the reusable details dialog here. It starts hidden because it is not .open() ---
-    with ui.dialog() as details_dialog, ui.card().classes("w-full h-full"):
+    with ui.dialog().props('full-width full-height') as details_dialog, ui.card().classes("w-full h-full"):
         # This column is the container for the dynamic content
         details_content_area = ui.column().classes('w-full h-full')
 
 # Testing
 ui.run(language='fr')
-
