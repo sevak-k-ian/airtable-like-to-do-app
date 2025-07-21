@@ -465,7 +465,7 @@ def show_create_todo_button():
 def build_create_todo_dialog() -> ui.dialog:
     """Builds the 'Create To-Do' dialog window with its content."""
     global new_todo_name
-    with ui.dialog() as dialog, ui.card().classes("w-2/3 h-5/6"):
+    with ui.dialog().props("full-width full-height") as dialog, ui.card().classes("w-full h-full"):
         with ui.column().classes('w-full h-full'):
             # HEADER SECTION
             with ui.row().classes("w-full no-wrap items-center p-2"):
