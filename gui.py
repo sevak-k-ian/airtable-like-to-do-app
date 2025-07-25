@@ -197,7 +197,12 @@ pass
 
 def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
     """Groups a list of to-do dictionaries by their 'status' key."""
+    # Creates an empty dict
     grouped = defaultdict(list)
+    # For every todo, it will will create a new key that is the grouping_property
+    # and insert a pair key(=grouping_property), value(a list which is inside the todo))
+    # if the grouping_property is already a key inside the grouped dict, then the todo will be insert as a new item
+    # of the value-list linked to this existing key-grouping-property
     for todo in todos_list:
         grouped[todo[f"{grouping_property}"]].append(todo)
     return grouped
@@ -306,9 +311,11 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
     # Loop through each status group (e.g., "Todo", "Done")
     for status, todos in grouped_todos.items():
         # Create a collapsible header for the group
-        with ui.expansion(f'{status} ({len(todos)})', icon='drag_indicator').classes('w-full'):
+        # TODO Add an highlight color behind the status' name (to copy airtable styling)
+        with ui.expansion(f'{status} ({len(todos)} items)', icon='drag_indicator').classes('w-full'):
             # This column holds all the to-dos for this group
             with ui.column().classes('w-full gap-0'):
+                # TODO Add here sub-titles like "Deadline", "Fire", "Priority", "Status"
                 # Loop through each to-do in the current group
                 for todo in todos:
                     # The main row for a single to-do item
@@ -317,13 +324,12 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
                         # To-do name (takes up all available space)
                         ui.label(todo['todo_name']).classes('flex-grow')
 
-                        # --- NEW: Add the properties on the right ---
-
                         # Status "Pill"
                         status = todo.get('status', '')
                         ui.label(status).classes(
                             f'w-28 text-center text-sm p-1 rounded-full {STATUS_COLORS.get(status, "bg-gray-200")}')
 
+                        # TODO change position of Fire icon, place it as a prefix of the todo row
                         # Fire Icon
                         is_urgent = todo.get('fire', False)
                         ui.label('🔥' if is_urgent else '').classes('w-12 text-center text-xl')
