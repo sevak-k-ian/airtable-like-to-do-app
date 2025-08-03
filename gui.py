@@ -6,6 +6,7 @@ import datetime
 from zoneinfo import ZoneInfo
 from collections import defaultdict
 from typing import List, Dict, Callable
+import database
 
 ############# TITLE CONSTANT AND GLOBAL VARIABLES #############
 pass
@@ -16,7 +17,7 @@ now_utc = datetime.datetime.now(datetime.timezone.utc)
 french_timezone = ZoneInfo("Europe/Paris")
 now_french = now_utc.astimezone(french_timezone)
 # 3. Format the result into your desired string format
-FORMATTED_FR_DATE = now_french.strftime("%d/%m/%Y %H:%M")
+NOW_FR_DATE = now_french.strftime("%d/%m/%Y %H:%M")
 
 # Properties and their available values
 STATUS_OPTIONS = ["Todo", "Done"]
@@ -192,8 +193,12 @@ active_filters = {}
 details_dialog = None
 details_content_area = None
 
+############# TITLE GLOBAL VARIABLES COMING FROM SQLITE DATABASE ############
+all_current_todos: list = database.get_all_todos()
+
 ############# TITLE CLI FUNCTIONS #############
 pass
+
 
 def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
     """Groups a list of to-do dictionaries by their 'status' key."""
@@ -206,6 +211,7 @@ def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> d
     for todo in todos_list:
         grouped[todo[f"{grouping_property}"]].append(todo)
     return grouped
+
 
 def add_todo_to_list():
     global new_todo_name, created_time_label, upload_file_property, modified_time_label, comment_editor_property, \
@@ -223,9 +229,6 @@ def add_todo_to_list():
         "modified_time": modified_time_label.text
     }
 
-    todos_sample.append(todo_to_be_added)
-    print(todos_sample)
-
 
 ############# TITLE LAYOUT FUNCTIONS #############
 pass
@@ -234,7 +237,7 @@ pass
 # Main Page layout
 def show_main_page():
     """
-        Return the layout that will contain the to-do details window and to-do creation window.
+        Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
         :return: main_page column element
     """
     global main_page
@@ -252,7 +255,7 @@ def show_main_page():
 
             # The rest of your list view
             with ui.column().classes("w-full"):
-                create_grouped_list_view(todos_list=todos_sample, property_used_for_grouping="source")
+                create_grouped_list_view(todos_list=database.get_all_todos(), property_used_for_grouping="source")
     return main_page
 
 
@@ -325,22 +328,22 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
                         ui.label(todo['todo_name']).classes('flex-grow')
 
                         # Status "Pill"
-                        status = todo.get('status', '')
+                        status = todo["status"]
                         ui.label(status).classes(
                             f'w-28 text-center text-sm p-1 rounded-full {STATUS_COLORS.get(status, "bg-gray-200")}')
 
                         # TODO change position of Fire icon, place it as a prefix of the todo row
                         # Fire Icon
-                        is_urgent = todo.get('fire', False)
+                        is_urgent = todo["fire_or_clock"]
                         ui.label('🔥' if is_urgent else '').classes('w-12 text-center text-xl')
 
                         # Priority "Pill"
-                        priority = todo.get('priority', '')
+                        priority = todo["priority"]
                         ui.label(priority).classes(
                             f'w-24 text-center text-sm p-1 rounded-full {PRIORITY_COLORS.get(priority, "bg-gray-200")}')
 
                         # Deadline
-                        deadline = todo.get('deadline', '').strftime("%d/%m/%Y")
+                        deadline = todo["deadline"]
                         ui.label(deadline).classes('w-32 text-right')
 
                     ui.separator()
@@ -534,14 +537,14 @@ def build_create_todo_dialog() -> ui.dialog:
                         # Cell N°2/3 : to-do creation date, now by default
                         with ui.column():
                             created_time_property_h3 = ui.label("Created on").classes(AT_TODO_PROPERTIES_HEADING)
-                            created_time_label = ui.label(text=f"{FORMATTED_FR_DATE}").classes(
+                            created_time_label = ui.label(text=f"{NOW_FR_DATE}").classes(
                                 AT_DATE_LABEL_STYLE).props(
                                 'dense borderless')
                         # Cell N°2/3 : to-do last modified time, now by default
                         with ui.column():
                             modified_time_property_h3 = ui.label("Modified on").classes(
                                 AT_TODO_PROPERTIES_HEADING)
-                            modified_time_label = ui.label(text=f"{FORMATTED_FR_DATE}").classes(
+                            modified_time_label = ui.label(text=f"{NOW_FR_DATE}").classes(
                                 AT_DATE_LABEL_STYLE).props(
                                 'dense borderless')
 
