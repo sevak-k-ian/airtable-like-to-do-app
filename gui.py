@@ -186,15 +186,15 @@ new_todo_name = None
 todo_list_view = None
 filter_bar = None
 
-# This dictionary will store the user's selections
+# Dictionary to store the user's selections
 active_filters = {}
 
-# We create placeholders for the dialog and its content area
+# Placeholders for the dialog and its content area
 details_dialog = None
 details_content_area = None
 
-############# TITLE GLOBAL VARIABLES COMING FROM SQLITE DATABASE ############
-all_current_todos: list = database.get_all_todos()
+############# TITLE DATA COMING FROM SQLITE DATABASE ############
+all_DB_todos: list = database.get_all_todos()
 
 ############# TITLE CLI FUNCTIONS #############
 pass
@@ -204,7 +204,7 @@ def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> d
     """Groups a list of to-do dictionaries by their 'status' key."""
     # Creates an empty dict
     grouped = defaultdict(list)
-    # For every todo, it will will create a new key that is the grouping_property
+    # For every todo, it will create a new key that is the grouping_property
     # and insert a pair key(=grouping_property), value(a list which is inside the todo))
     # if the grouping_property is already a key inside the grouped dict, then the todo will be insert as a new item
     # of the value-list linked to this existing key-grouping-property
@@ -240,7 +240,7 @@ def show_main_page():
         Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
         :return: main_page column element
     """
-    global main_page
+    global main_page, all_DB_todos
     main_page = ui.column().classes("w-full h-screen")
     with main_page:
         with ui.column().classes("w-full h-screen"):
@@ -255,7 +255,8 @@ def show_main_page():
 
             # The rest of your list view
             with ui.column().classes("w-full"):
-                create_grouped_list_view(todos_list=database.get_all_todos(), property_used_for_grouping="source")
+                # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
+                create_grouped_list_view(todos_list=all_DB_todos, property_used_for_grouping="source")
     return main_page
 
 
