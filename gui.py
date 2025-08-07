@@ -192,6 +192,7 @@ active_filters = {}
 # Placeholders for the dialog and its content area
 details_dialog = None
 details_content_area = None
+dialog_box_container = None
 
 ############# TITLE DATA COMING FROM SQLITE DATABASE ############
 # all_DB_todos: list = database.get_all_todos()
@@ -569,13 +570,19 @@ def build_create_todo_dialog() -> ui.dialog:
 
 ############# TITLE MAIN LAYOUT LOGIC #############
 pass
-with show_list_view():
-    # Create the reusable details dialog here. It starts hidden because it is not .open() ---
+
+with ui.column().classes("w-full h-screen") as main_container:
+    # Build the list view container and content inside
+    show_list_view()
+
+    # Build the dialog box hidden for the moment
+    # until a todo-row from list view is on_click & opens up the details_dialog box element
     with ui.dialog().props('full-width full-height').on('escape-key',
-                                                        lambda: (refresh_list_view(),details_dialog.close())) as details_dialog, ui.card().classes(
-            "w-full h-full"):
-        # This column is the container for the dynamic content
-        details_content_area = ui.column().classes('w-full h-full')
+                                                        lambda: (refresh_list_view(),
+                                                                 details_dialog.close())) as details_dialog:
+        with ui.card().classes("w-full h-full"):
+            # The container for the dynamic content that will occupy all the avaialable space inside
+            details_content_area = ui.column().classes('w-full h-full')
 
 # Testing
 ui.run(language='fr')
