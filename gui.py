@@ -153,7 +153,7 @@ pass
 
 # UI ELEMENTS VARIABLES
 # Main page elements
-main_page = None
+list_view_page = None
 
 # To-do details window elements
 todo_details_window = None
@@ -194,7 +194,7 @@ details_dialog = None
 details_content_area = None
 
 ############# TITLE DATA COMING FROM SQLITE DATABASE ############
-all_DB_todos: list = database.get_all_todos()
+# all_DB_todos: list = database.get_all_todos()
 
 ############# TITLE CLI FUNCTIONS #############
 pass
@@ -234,15 +234,18 @@ def add_todo_to_list():
 pass
 
 
-# Main Page layout
-def show_main_page():
+# Main Page layout (list + filter bar)
+def show_list_view():
     """
         Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
-        :return: main_page column element
+        :return: list_view_page column element
     """
-    global main_page, all_DB_todos
-    main_page = ui.column().classes("w-full h-screen")
-    with main_page:
+    global list_view_page
+    # , all_DB_todos
+    all_database_todos: list = database.get_all_todos()
+    list_view_page = ui.column().classes("w-full h-screen")
+
+    with list_view_page:
         with ui.column().classes("w-full h-screen"):
             # 1. Build the creation dialog. It will be invisible until opened.
             create_dialog = build_create_todo_dialog()
@@ -256,11 +259,10 @@ def show_main_page():
             # The rest of your list view
             with ui.column().classes("w-full"):
                 # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
-                create_grouped_list_view(todos_list=all_DB_todos, property_used_for_grouping="source")
-    return main_page
+                create_grouped_list_view(todos_list=all_database_todos, property_used_for_grouping="source")
+    return list_view_page
 
 
-# To-do list grouped view layout
 def create_filter_dropdown(name: str, options: List[str], filters: Dict):
     """Creates a robust, Airtable-style filter button with its own menu."""
 
@@ -350,17 +352,10 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
                     ui.separator()
 
 
-def show_todo_list_view():
-    """
-        Return the layout that will contain the concatenated list view, grouped (for the moment) by source
-        :return: todo_list_view column element
-    """
-    global todo_list_view, todo_button, filter_bar
-    with ui.row().classes("w-full justify-between items-center"):
-        filter_bar = create_filter_bar(active_filters)
-        todo_button = create_todo_button()
-    with ui.column().classes("w-full"):
-        create_grouped_list_view(todos_list=todos_sample, property_used_for_grouping="source")
+def refresh_list_view():
+    global list_view_page
+    list_view_page.clear()
+    show_list_view()
 
 
 # To-do details view layout
@@ -373,7 +368,6 @@ def open_todo_details(todo: dict):
 def show_todo_details_window(todo_to_show: dict):
     """Populates the details_content_area element with the UI for a specific to-do."""
     global details_content_area
-
     # Clear any previous content
     details_content_area.clear()
 
@@ -384,7 +378,12 @@ def show_todo_details_window(todo_to_show: dict):
             # HEADER SECTION
             with ui.row().classes("w-full no-wrap items-center p-2"):
                 # Pass the actual to-do name to the input
-                ui.input(value=todo_to_show['todo_name']).classes(AT_TODO_HEADER_STYLE).props("borderless")
+                # TODO Reprendre ici que le "input" se mette à jour quand je quitte la page
+                ui.input(value=todo_to_show['todo_name'],
+                         on_change=lambda e: database.update_one_column(todo_id=todo_to_show["id"],
+                                                                        column_to_update="todo_name",
+                                                                        new_status=e.value)).classes(
+                    AT_TODO_HEADER_STYLE).props("borderless")
                 ui.button(text="Mark as done").classes(AT_DONE_BTN_STYLE).props('no-caps')
 
             # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT TO-DO : PRIORITY, STATUS, FIRE, SOURCE
@@ -463,7 +462,7 @@ def show_todo_details_window(todo_to_show: dict):
                         'dense borderless')
 
 
-# Create new to-do view layout
+# Create todo creation window layout
 def create_todo_button():
     global todo_button
     todo_button = ui.button(text="Create todo").classes(AT_CREATE_TODO_BTN_STYLE).props(
@@ -570,9 +569,11 @@ def build_create_todo_dialog() -> ui.dialog:
 
 ############# TITLE MAIN LAYOUT LOGIC #############
 pass
-with show_main_page():
-    # --- NEW: Create the reusable details dialog here. It starts hidden because it is not .open() ---
-    with ui.dialog().props('full-width full-height') as details_dialog, ui.card().classes("w-full h-full"):
+with show_list_view():
+    # Create the reusable details dialog here. It starts hidden because it is not .open() ---
+    with ui.dialog().props('full-width full-height').on('escape-key',
+                                                        lambda: (refresh_list_view(),details_dialog.close())) as details_dialog, ui.card().classes(
+            "w-full h-full"):
         # This column is the container for the dynamic content
         details_content_area = ui.column().classes('w-full h-full')
 
