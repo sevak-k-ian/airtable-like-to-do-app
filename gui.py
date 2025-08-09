@@ -1,139 +1,11 @@
 ############# TITLE LIBRARIES AND MODULES #############
 pass
 from nicegui import app, ui
-import datetime
-# Get current time to generate realistic timestamps
-from zoneinfo import ZoneInfo
 from collections import defaultdict
 from typing import List, Dict, Callable
 import database
-
-############# TITLE CONSTANT AND GLOBAL VARIABLES #############
-pass
-
-# 1. Get the current time in UTC (as you did)
-now_utc = datetime.datetime.now(datetime.timezone.utc)
-# 2. Convert it to the French timezone (Europe/Paris)
-french_timezone = ZoneInfo("Europe/Paris")
-now_french = now_utc.astimezone(french_timezone)
-# 3. Format the result into your desired string format
-NOW_FR_DATE = now_french.strftime("%d/%m/%Y %H:%M")
-
-# Properties and their available values
-STATUS_OPTIONS = ["Todo", "Done"]
-PRIORITY_OPTIONS = ["High", "Medium", "Low"]
-SOURCE_OPTIONS = ["🔒 Perso", "👩‍❤️‍👨 Famille", "👶 Yeraz", "🤱 Mama", "💼 Hameaux Légers"]
-FIRE_OPTIONS = ["🔥", "⏰", ""]
-
-############# TITLE DUMMY DICT AND DATA FOR TESTING #############
-pass
-todos_sample = [
-    {
-        "todo_name": "Finalize Q3 Marketing Report",
-        "priority": "High",
-        "source": "🔒 Perso",
-        "fire_or_clock": "🔥",  # True for "fire" (urgent)
-        "deadline": (now_french - datetime.timedelta(days=2)),
-        "status": "Done",
-        "files": ["Q3_report_final_v2.docx", "presentation_slides.pptx"],
-        "comments": ["Approved by Jane Doe.", "Awaiting final sign-off from legal."],
-        "created_time": (now_french - datetime.timedelta(days=10)),
-        "modified_time": (now_french - datetime.timedelta(days=2, hours=4)),
-    },
-    {
-        "todo_name": "Develop User Authentication Feature",
-        "priority": "High",
-        "source": "🔒 Perso",
-        "fire_or_clock": "🔥",
-        "deadline": (now_french - datetime.timedelta(days=5)),
-        "status": "Done",
-        "files": ["auth_module.py", "user_schema.sql"],
-        "comments": ["Deployed to production in v1.2.", "Passed all security checks."],
-        "created_time": (now_french - datetime.timedelta(days=25)),
-        "modified_time": (now_french - datetime.timedelta(days=5, hours=1)),
-    },
-    {
-        "todo_name": "Book Flights for Paris Conference",
-        "priority": "Medium",
-        "source": "👩‍❤️‍👨 Famille",
-        "fire_or_clock": "",  # False for "clock" (scheduled task)
-        "deadline": (now_french - datetime.timedelta(days=15)),
-        "status": "Todo",
-        "files": ["flight_confirmation_AF123.pdf", "hotel_booking.pdf"],
-        "comments": ["Got a window seat.", "Total cost was within budget."],
-        "created_time": (now_french - datetime.timedelta(days=30)),
-        "modified_time": (now_french - datetime.timedelta(days=15)),
-    },
-    {
-        "todo_name": "Zizi pote",
-        "priority": "Medium",
-        "source": "🤱 Mama",
-        "fire_or_clock": "⏰",  # False for "clock" (scheduled task)
-        "deadline": (now_french - datetime.timedelta(days=15)),
-        "status": "Todo",
-        "files": ["flight_confirmation_AF123.pdf", "hotel_booking.pdf"],
-        "comments": ["Got a window seat.", "Total cost was within budget."],
-        "created_time": (now_french - datetime.timedelta(days=30)),
-        "modified_time": (now_french - datetime.timedelta(days=15)),
-    }
-]
-
-############# TITLE CONSTANT VARIABLES FOR ELEMENTS AND FONT STYLING #############
-pass
-# Style for to-do name in to-do details window
-AT_TODO_HEADER_STYLE = (
-    'w-[85%] bg-white font-inter font-bold text-zinc-900 text-[31px] '
-    'leading-[1.5] tracking-[-0.16px] px-2 py-[6px] rounded-md '
-    'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
-)
-
-# Style for to-do details window done button
-AT_DONE_BTN_STYLE = (
-    'w-[15%] h-[40px] !bg-[#1555d9] text-white text-medium rounded-md '
-    'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
-)
-
-# Style for to-do details window properties selector type
-AT_PROPERTY_SELECTOR_STYLE = (
-    'w-full bg-white font-inter font-bold text-zinc-900 '
-    'leading-[1.5] tracking-[-0.16px] px-2 py-0 rounded-md '
-    'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
-)
-
-# Style for to-do details window mini properties heading
-AT_TODO_PROPERTIES_HEADING = 'font-inter text-zinc-900 text-[13px] leading-[1.5] font-medium'
-
-# Style for to-do details window date type labels
-AT_DATE_LABEL_STYLE = (
-    'w-full bg-white font-inter text-zinc-900'
-    'leading-[1.5] tracking-[-0.16px] px-2 py-2 rounded-md '
-    'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
-)
-
-# Style for to-do details window upload type property
-AT_UPLOAD_ZONE_STYLE = (
-    'max-w-full font-inter text-zinc-900'
-    'leading-[1.5] tracking-[-0.16px] px-2 py-2 rounded-md '
-    'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
-)
-
-# Style for to-do creation window create button
-AT_CREATE_TODO_BTN_STYLE = (
-    'w-[15%] h-[40px] !bg-[#127b0d] text-white text-medium rounded-md '
-    'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
-)
-
-# Dictionaries to map values to Tailwind CSS classes for color
-STATUS_COLORS = {
-    'Todo': 'bg-gray-200 text-gray-800',
-    'In Progress': 'bg-blue-200 text-blue-800',
-    'Done': 'bg-green-200 text-green-800',
-}
-PRIORITY_COLORS = {
-    'Low': 'bg-yellow-200 text-yellow-800',
-    'Medium': 'bg-orange-200 text-orange-800',
-    'High': 'bg-red-200 text-red-800',
-}
+import style
+from constant import NOW_FR_DATE, STATUS_OPTIONS, PRIORITY_OPTIONS, SOURCE_OPTIONS, FIRE_OPTIONS
 
 # Load the "Inter" font from Google Fonts for the whole page
 ui.add_head_html('''
@@ -194,12 +66,7 @@ details_dialog = None
 details_content_area = None
 dialog_box_container = None
 
-############# TITLE DATA COMING FROM SQLITE DATABASE ############
-# all_DB_todos: list = database.get_all_todos()
-
 ############# TITLE CLI FUNCTIONS #############
-pass
-
 
 def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
     """Groups a list of to-do dictionaries by their 'status' key."""
@@ -234,34 +101,50 @@ def add_todo_to_list():
 ############# TITLE LAYOUT FUNCTIONS #############
 pass
 
+# TODOS LIST VIEW (FILTER + NEW TO-DO)
+def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
+    """Creates an Airtable-like grouped list view."""
+    grouped_todos = group_todos_by_property(todos_list=todos_list, grouping_property=property_used_for_grouping)
 
-# Main Page layout (list + filter bar)
-def show_list_view():
-    """
-        Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
-        :return: list_view_page column element
-    """
-    global list_view_page
-    # , all_DB_todos
-    all_database_todos: list = database.get_all_todos()
-    list_view_page = ui.column().classes("w-full h-screen")
+    # Style for the to-do item rows
+    item_row_style = 'w-full p-2 bg-white hover:bg-gray-50 cursor-pointer'
 
-    with list_view_page:
-        with ui.column().classes("w-full h-screen"):
-            # 1. Build the creation dialog. It will be invisible until opened.
-            create_dialog = build_create_todo_dialog()
+    # Loop through each status group (e.g., "Todo", "Done")
+    for status, todos in grouped_todos.items():
+        # Create a collapsible header for the group
+        # TODO Add an highlight color behind the status' name (to copy airtable styling)
+        with ui.expansion(f'{status} ({len(todos)} items)', icon='drag_indicator').classes('w-full'):
+            # This column holds all the to-dos for this group
+            with ui.column().classes('w-full gap-0'):
+                # TODO Add here sub-titles like "Deadline", "Fire", "Priority", "Status"
+                # Loop through each to-do in the current group
+                for todo in todos:
+                    # The main row for a single to-do item
+                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer').on(
+                            'click', lambda t=todo: open_todo_details(t)):
+                        # To-do name (takes up all available space)
+                        ui.label(todo['todo_name']).classes('flex-grow')
 
-            # 2. Build the main list view.
-            with ui.row().classes('w-full justify-between items-center p-4 border-b'):
-                create_filter_bar(active_filters)
-                # 3. The button now opens the dialog.
-                ui.button('New To-Do', icon='add', on_click=create_dialog.open).props('color=primary')
+                        # Status "Pill"
+                        status = todo["status"]
+                        ui.label(status).classes(
+                            f'w-28 text-center text-sm p-1 rounded-full {style.STATUS_COLORS.get(status, "bg-gray-200")}')
 
-            # The rest of your list view
-            with ui.column().classes("w-full"):
-                # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
-                create_grouped_list_view(todos_list=all_database_todos, property_used_for_grouping="source")
-    return list_view_page
+                        # TODO change position of Fire icon, place it as a prefix of the todo row
+                        # Fire Icon
+                        is_urgent = todo["fire_or_clock"]
+                        ui.label('🔥' if is_urgent else '').classes('w-12 text-center text-xl')
+
+                        # Priority "Pill"
+                        priority = todo["priority"]
+                        ui.label(priority).classes(
+                            f'w-24 text-center text-sm p-1 rounded-full {style.PRIORITY_COLORS.get(priority, "bg-gray-200")}')
+
+                        # Deadline
+                        deadline = todo["deadline"]
+                        ui.label(deadline).classes('w-32 text-right')
+
+                    ui.separator()
 
 
 def create_filter_dropdown(name: str, options: List[str], filters: Dict):
@@ -308,49 +191,32 @@ def create_filter_bar(filters: Dict):
         create_filter_dropdown('Source', SOURCE_OPTIONS, filters)
 
 
-def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
-    """Creates an Airtable-like grouped list view."""
-    grouped_todos = group_todos_by_property(todos_list=todos_list, grouping_property=property_used_for_grouping)
+def show_list_view():
+    """
+        Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
+        :return: list_view_page column element
+    """
+    global list_view_page
 
-    # Style for the to-do item rows
-    item_row_style = 'w-full p-2 bg-white hover:bg-gray-50 cursor-pointer'
+    all_database_todos: list = database.get_all_todos()
+    list_view_page = ui.column().classes("w-full h-screen")
 
-    # Loop through each status group (e.g., "Todo", "Done")
-    for status, todos in grouped_todos.items():
-        # Create a collapsible header for the group
-        # TODO Add an highlight color behind the status' name (to copy airtable styling)
-        with ui.expansion(f'{status} ({len(todos)} items)', icon='drag_indicator').classes('w-full'):
-            # This column holds all the to-dos for this group
-            with ui.column().classes('w-full gap-0'):
-                # TODO Add here sub-titles like "Deadline", "Fire", "Priority", "Status"
-                # Loop through each to-do in the current group
-                for todo in todos:
-                    # The main row for a single to-do item
-                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer').on(
-                            'click', lambda t=todo: open_todo_details(t)):
-                        # To-do name (takes up all available space)
-                        ui.label(todo['todo_name']).classes('flex-grow')
+    with list_view_page, ui.column().classes("w-full h-screen"):
+        # 1. Build the creation dialog. It will be invisible until opened.
+        create_dialog = build_create_todo_dialog()
 
-                        # Status "Pill"
-                        status = todo["status"]
-                        ui.label(status).classes(
-                            f'w-28 text-center text-sm p-1 rounded-full {STATUS_COLORS.get(status, "bg-gray-200")}')
+        # 2. Build the filter bar & "new todo" header
+        with ui.row().classes('w-full justify-between items-center p-4 border-b'):
+            # filter bar
+            create_filter_bar(active_filters)
+            # new-todo
+            ui.button('New To-Do', icon='add', on_click=create_dialog.open).props('color=primary')
 
-                        # TODO change position of Fire icon, place it as a prefix of the todo row
-                        # Fire Icon
-                        is_urgent = todo["fire_or_clock"]
-                        ui.label('🔥' if is_urgent else '').classes('w-12 text-center text-xl')
-
-                        # Priority "Pill"
-                        priority = todo["priority"]
-                        ui.label(priority).classes(
-                            f'w-24 text-center text-sm p-1 rounded-full {PRIORITY_COLORS.get(priority, "bg-gray-200")}')
-
-                        # Deadline
-                        deadline = todo["deadline"]
-                        ui.label(deadline).classes('w-32 text-right')
-
-                    ui.separator()
+        # The list of todos
+        with ui.column().classes("w-full"):
+            # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
+            create_grouped_list_view(todos_list=all_database_todos, property_used_for_grouping="source")
+    return list_view_page
 
 
 def refresh_list_view():
@@ -359,7 +225,7 @@ def refresh_list_view():
     show_list_view()
 
 
-# To-do details view layout
+# SINGLE TO-DO FOCUS VIEW
 def open_todo_details(todo: dict):
     """Clears, populates, and opens the details dialog for a given to-do."""
     show_todo_details_window(todo)
@@ -384,8 +250,8 @@ def show_todo_details_window(todo_to_show: dict):
                          on_change=lambda e: database.update_one_column(todo_id=todo_to_show["id"],
                                                                         column_to_update="todo_name",
                                                                         new_status=e.value)).classes(
-                    AT_TODO_HEADER_STYLE).props("borderless")
-                ui.button(text="Mark as done").classes(AT_DONE_BTN_STYLE).props('no-caps')
+                    style.AT_TODO_HEADER_STYLE).props("borderless")
+                ui.button(text="Mark as done").classes(style.AT_DONE_BTN_STYLE).props('no-caps')
 
             # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT TO-DO : PRIORITY, STATUS, FIRE, SOURCE
             global status_property_h3, priority_property_h3, fire_property_h3, source_property_h3
@@ -395,28 +261,28 @@ def show_todo_details_window(todo_to_show: dict):
                 with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
                     # Cell N°1/4 : to-do status
                     with ui.column():
-                        status_property_h3 = ui.label("Status").classes(AT_TODO_PROPERTIES_HEADING)
+                        status_property_h3 = ui.label("Status").classes(style.AT_TODO_PROPERTIES_HEADING)
                         status_dropdown_selector = ui.select(options=STATUS_OPTIONS,
                                                              value=todo_to_show["status"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                            style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                     # Cell N°2/4 : to-do priority
                     with ui.column():
-                        priority_property_h3 = ui.label("Priorité").classes(AT_TODO_PROPERTIES_HEADING)
+                        priority_property_h3 = ui.label("Priorité").classes(style.AT_TODO_PROPERTIES_HEADING)
                         priority_dropdown_selector = ui.select(options=PRIORITY_OPTIONS,
                                                                value=todo_to_show["priority"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                            style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                     # Cell N°3/4 : to-do fire
                     with ui.column():
-                        fire_property_h3 = ui.label("Fire").classes(AT_TODO_PROPERTIES_HEADING)
+                        fire_property_h3 = ui.label("Fire").classes(style.AT_TODO_PROPERTIES_HEADING)
                         fire_dropdown_selector = ui.select(options=FIRE_OPTIONS,
                                                            value=todo_to_show["fire_or_clock"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                            style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                     # Cell N°4/4 : to-do source
                     with ui.column():
-                        source_property_h3 = ui.label("Source").classes(AT_TODO_PROPERTIES_HEADING)
+                        source_property_h3 = ui.label("Source").classes(style.AT_TODO_PROPERTIES_HEADING)
                         source_dropdown_selector = ui.select(
                             options=SOURCE_OPTIONS, value=todo_to_show["source"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                            style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
             # 2nd SECTION TO DEFINE DATE INFO ABOUT TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
             global deadline_property_h3, created_time_property_h3, modified_time_property_h3, attachment_property_h3
@@ -426,8 +292,8 @@ def show_todo_details_window(todo_to_show: dict):
                 with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
                     # Cell N°1/3 : to-do deadline
                     with ui.column():
-                        deadline_property_h3 = ui.label("Deadline").classes(AT_TODO_PROPERTIES_HEADING)
-                        with ui.input().props("dense borderless").classes(AT_PROPERTY_SELECTOR_STYLE) as date:
+                        deadline_property_h3 = ui.label("Deadline").classes(style.AT_TODO_PROPERTIES_HEADING)
+                        with ui.input().props("dense borderless").classes(style.AT_PROPERTY_SELECTOR_STYLE) as date:
                             with ui.menu().props('no-parent-event') as menu:
                                 with ui.date().bind_value(date).props('mask="DD/MM/YYYY"'):
                                     with ui.row().classes('justify-end'):
@@ -436,14 +302,14 @@ def show_todo_details_window(todo_to_show: dict):
                                 ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
                     # Cell N°2/3 : to-do creation date
                     with ui.column():
-                        created_time_property_h3 = ui.label("Created on").classes(AT_TODO_PROPERTIES_HEADING)
-                        created_time_label = ui.label(text="12/03/2025").classes(AT_DATE_LABEL_STYLE).props(
+                        created_time_property_h3 = ui.label("Created on").classes(style.AT_TODO_PROPERTIES_HEADING)
+                        created_time_label = ui.label(text="12/03/2025").classes(style.AT_DATE_LABEL_STYLE).props(
                             'dense borderless')
                     # Cell N°2/3 : to-do last modified time
                     with ui.column():
                         modified_time_property_h3 = ui.label("Modified on").classes(
-                            AT_TODO_PROPERTIES_HEADING)
-                        modified_time_label = ui.label(text="28/05/2025").classes(AT_DATE_LABEL_STYLE).props(
+                            style.AT_TODO_PROPERTIES_HEADING)
+                        modified_time_label = ui.label(text="28/05/2025").classes(style.AT_DATE_LABEL_STYLE).props(
                             'dense borderless')
 
             # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
@@ -452,21 +318,21 @@ def show_todo_details_window(todo_to_show: dict):
             with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
                 # Column N°1/2 : comments section
                 with ui.column().classes('w-[75%]'):
-                    comments_property_h3 = ui.label("Comments").classes(AT_TODO_PROPERTIES_HEADING)
+                    comments_property_h3 = ui.label("Comments").classes(style.AT_TODO_PROPERTIES_HEADING)
                     comment_editor_property = ui.editor(placeholder='Type something here').classes("w-full")
                 # Column N°2/2 : file upload section
                 with ui.column().classes('w-[25%]'):
-                    attachment_property_h3 = ui.label("Attachments").classes(AT_TODO_PROPERTIES_HEADING)
+                    attachment_property_h3 = ui.label("Attachments").classes(style.AT_TODO_PROPERTIES_HEADING)
                     upload_file_property = ui.upload(
                         on_upload=lambda e: ui.notify(f'Uploaded {e.name}')).classes(
-                        AT_UPLOAD_ZONE_STYLE).props(
+                        style.AT_UPLOAD_ZONE_STYLE).props(
                         'dense borderless')
 
 
-# Create todo creation window layout
+# NEW TO-DO CREATION
 def create_todo_button():
     global todo_button
-    todo_button = ui.button(text="Create todo").classes(AT_CREATE_TODO_BTN_STYLE).props(
+    todo_button = ui.button(text="Create todo").classes(style.AT_CREATE_TODO_BTN_STYLE).props(
         'no-caps')
     return todo_button
 
@@ -479,13 +345,13 @@ def build_create_todo_dialog() -> ui.dialog:
             # HEADER SECTION
             with ui.row().classes("w-full no-wrap items-center p-2"):
                 new_todo_name = ui.input(placeholder="Enter new to-do name...").classes(
-                    AT_TODO_HEADER_STYLE).props("borderless")
+                    style.AT_TODO_HEADER_STYLE).props("borderless")
                 # This button will eventually save the new to-do
                 ui.button("Create", on_click=lambda: (
                     ui.notify("To-do Created!"),
                     add_todo_to_list(),
                     dialog.close()  # Close the dialog after creation
-                )).classes(AT_CREATE_TODO_BTN_STYLE).props('no-caps')
+                )).classes(style.AT_CREATE_TODO_BTN_STYLE).props('no-caps')
 
             # CONTENT SECTION (you can add the rest of your form fields here)
             with ui.scroll_area().classes('w-full flex-grow p-4'):
@@ -498,26 +364,26 @@ def build_create_todo_dialog() -> ui.dialog:
                     with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
                         # Cell N°1/4 : to-do status
                         with ui.column():
-                            status_property_h3 = ui.label("Status").classes(AT_TODO_PROPERTIES_HEADING)
+                            status_property_h3 = ui.label("Status").classes(style.AT_TODO_PROPERTIES_HEADING)
                             status_dropdown_selector = ui.select(options=STATUS_OPTIONS, value="Todo").classes(
-                                AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                                style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                         # Cell N°2/4 : to-do priority
                         with ui.column():
-                            priority_property_h3 = ui.label("Priorité").classes(AT_TODO_PROPERTIES_HEADING)
+                            priority_property_h3 = ui.label("Priorité").classes(style.AT_TODO_PROPERTIES_HEADING)
                             priority_dropdown_selector = ui.select(options=PRIORITY_OPTIONS,
                                                                    value="High").classes(
-                                AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                                style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                         # Cell N°3/4 : to-do fire
                         with ui.column():
-                            fire_property_h3 = ui.label("Fire").classes(AT_TODO_PROPERTIES_HEADING)
+                            fire_property_h3 = ui.label("Fire").classes(style.AT_TODO_PROPERTIES_HEADING)
                             fire_dropdown_selector = ui.select(options=FIRE_OPTIONS).classes(
-                                AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                                style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                         # Cell N°4/4 : to-do source
                         with ui.column():
-                            source_property_h3 = ui.label("Source").classes(AT_TODO_PROPERTIES_HEADING)
+                            source_property_h3 = ui.label("Source").classes(style.AT_TODO_PROPERTIES_HEADING)
                             source_dropdown_selector = ui.select(
                                 options=SOURCE_OPTIONS).classes(
-                                AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                                style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
                 # 2nd SECTION TO DEFINE DATE INFO ABOUT NEW TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
                 global deadline_property_h3, created_time_property_h3, modified_time_property_h3, attachment_property_h3
@@ -527,8 +393,8 @@ def build_create_todo_dialog() -> ui.dialog:
                     with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
                         # Cell N°1/3 : to-do deadline
                         with ui.column():
-                            deadline_property_h3 = ui.label("Deadline").classes(AT_TODO_PROPERTIES_HEADING)
-                            with ui.input().props("dense borderless").classes(AT_PROPERTY_SELECTOR_STYLE) as date:
+                            deadline_property_h3 = ui.label("Deadline").classes(style.AT_TODO_PROPERTIES_HEADING)
+                            with ui.input().props("dense borderless").classes(style.AT_PROPERTY_SELECTOR_STYLE) as date:
                                 with ui.menu().props('no-parent-event') as menu:
                                     with ui.date().bind_value(date):
                                         with ui.row().classes('justify-end'):
@@ -537,16 +403,16 @@ def build_create_todo_dialog() -> ui.dialog:
                                     ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
                         # Cell N°2/3 : to-do creation date, now by default
                         with ui.column():
-                            created_time_property_h3 = ui.label("Created on").classes(AT_TODO_PROPERTIES_HEADING)
+                            created_time_property_h3 = ui.label("Created on").classes(style.AT_TODO_PROPERTIES_HEADING)
                             created_time_label = ui.label(text=f"{NOW_FR_DATE}").classes(
-                                AT_DATE_LABEL_STYLE).props(
+                                style.AT_DATE_LABEL_STYLE).props(
                                 'dense borderless')
                         # Cell N°2/3 : to-do last modified time, now by default
                         with ui.column():
                             modified_time_property_h3 = ui.label("Modified on").classes(
-                                AT_TODO_PROPERTIES_HEADING)
+                                style.AT_TODO_PROPERTIES_HEADING)
                             modified_time_label = ui.label(text=f"{NOW_FR_DATE}").classes(
-                                AT_DATE_LABEL_STYLE).props(
+                                style.AT_DATE_LABEL_STYLE).props(
                                 'dense borderless')
 
                 # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
@@ -555,14 +421,14 @@ def build_create_todo_dialog() -> ui.dialog:
                 with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
                     # Column N°1/2 : comments section
                     with ui.column().classes('w-[75%]'):
-                        comments_property_h3 = ui.label("Comments").classes(AT_TODO_PROPERTIES_HEADING)
+                        comments_property_h3 = ui.label("Comments").classes(style.AT_TODO_PROPERTIES_HEADING)
                         comment_editor_property = ui.editor(placeholder='Type something here').classes("w-full")
                     # Column N°2/2 : file upload section
                     with ui.column().classes('w-[25%]'):
-                        attachment_property_h3 = ui.label("Attachments").classes(AT_TODO_PROPERTIES_HEADING)
+                        attachment_property_h3 = ui.label("Attachments").classes(style.AT_TODO_PROPERTIES_HEADING)
                         upload_file_property = ui.upload(
                             on_upload=lambda e: ui.notify(f'Uploaded {e.name}')).classes(
-                            AT_UPLOAD_ZONE_STYLE).props(
+                            style.AT_UPLOAD_ZONE_STYLE).props(
                             'dense borderless')
 
     return dialog

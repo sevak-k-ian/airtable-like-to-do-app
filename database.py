@@ -65,10 +65,6 @@ def get_todo_by_id(todo_id: int):
         return cursor.fetchone()
 
 
-specific_todo : sqlite3.Row = get_todo_by_id(1)
-print(specific_todo.keys())
-print(specific_todo["todo_name"])
-
 def create_todo(todo_name: str, status: str, priority: str, fire_or_clock: str, source: str, deadline: str,
                 modified_time: str, created_time: str, comments: str):
     """Adds a new todo inside the todos table"""
@@ -76,7 +72,8 @@ def create_todo(todo_name: str, status: str, priority: str, fire_or_clock: str, 
         cursor = connection.cursor()
 
         query: str = "INSERT INTO todos (todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        cursor.execute(query, (todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments))
+        cursor.execute(query, (
+        todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments))
         connection.commit()
 
 
@@ -114,7 +111,6 @@ french_timezone = ZoneInfo("Europe/Paris")
 now_french = now_utc.astimezone(french_timezone)
 # 3. Format the result into your desired string format
 NOW_FR_DATE = now_french.strftime("%d/%m/%Y")
-
 
 # todo_test_1 = {
 #     "todo_name": "Finalize Q3 Marketing Report",
