@@ -30,44 +30,15 @@ pass
 
 # UI - LIST VIEW
 list_view_page = None
-todo_list_view = None
-filter_bar = None
 list_view_groups_state = set()
 
 # Dictionary to store the user's selections
 active_filters = {}
 
-# UI - SINGLE TO-DO FOCUS VIEW
-todo_details_window = None
-mark_done_btn = None
-todo_header_input = None
-status_property_h3 = None
-priority_property_h3 = None
-fire_property_h3 = None
-source_property_h3 = None
-status_dropdown_selector = None
-priority_dropdown_selector = None
-source_dropdown_selector = None
-fire_dropdown_selector = None
-deadline_property_h3 = None
-created_time_property_h3 = None
-modified_time_property_h3 = None
-attachment_property_h3 = None
-comments_property_h3 = None
-created_time_label = None
-upload_file_property = None
-modified_time_label = None
-comment_editor_property = None
-
 # Placeholders for the dialog and its content area
 details_dialog = None
 details_content_area = None
-dialog_box_container = None
-
-# UI - TO-DO CREATION
-todo_creation_window = None
-todo_button = None
-new_todo_name = None
+create_btn_clicked = False
 
 
 ############# TITLE CLI FUNCTIONS #############
@@ -83,23 +54,6 @@ def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> d
     for todo in todos_list:
         grouped[todo[f"{grouping_property}"]].append(todo)
     return grouped
-
-
-def add_todo_to_list():
-    global new_todo_name, created_time_label, upload_file_property, modified_time_label, comment_editor_property, \
-        status_dropdown_selector, priority_dropdown_selector, source_dropdown_selector, fire_dropdown_selector
-    todo_to_be_added: dict = {
-        "todo_name": new_todo_name.value,
-        "priority": priority_dropdown_selector.value,
-        "source": source_dropdown_selector.value,
-        "fire_or_clock": fire_dropdown_selector.value,
-        "deadline": "⚠️ TTTTTESSSSTTT A CORRIGER",
-        "status": status_dropdown_selector.value,
-        "files": "⚠️ TTTTTESSSSTTT A CORRIGER",
-        "comments": comment_editor_property.value,
-        "created_time": created_time_label.text,
-        "modified_time": modified_time_label.text
-    }
 
 
 ############# TITLE LAYOUT FUNCTIONS #############
@@ -276,8 +230,6 @@ def show_todo_details_window(todo_to_show: dict):
                 ui.button(text="Mark as done").classes(style.AT_DONE_BTN_STYLE).props('no-caps')
 
             # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT TO-DO : PRIORITY, STATUS, FIRE, SOURCE
-            global status_property_h3, priority_property_h3, fire_property_h3, source_property_h3
-            global status_dropdown_selector, priority_dropdown_selector, fire_dropdown_selector, source_dropdown_selector
             # Display this section as a row of 4 cells (grid element)
             with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                 with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -307,8 +259,6 @@ def show_todo_details_window(todo_to_show: dict):
                             style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
             # 2nd SECTION TO DEFINE DATE INFO ABOUT TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
-            global deadline_property_h3, created_time_property_h3, modified_time_property_h3, attachment_property_h3
-            global created_time_label, modified_time_label, upload_file_property
             # Display this section as a row of 3 cells (grid element)
             with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                 with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -335,7 +285,6 @@ def show_todo_details_window(todo_to_show: dict):
                             'dense borderless')
 
             # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
-            global comments_property_h3, comment_editor_property
             # Display this section as a row containing 2 columns
             with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
                 # Column N°1/2 : comments section
@@ -352,16 +301,9 @@ def show_todo_details_window(todo_to_show: dict):
 
 
 # NEW TO-DO CREATION
-def create_todo_button():
-    global todo_button
-    todo_button = ui.button(text="Create todo").classes(style.AT_CREATE_TODO_BTN_STYLE).props(
-        'no-caps')
-    return todo_button
-
-
 def build_create_todo_dialog() -> ui.dialog:
     """Builds the 'Create To-Do' dialog window with its content."""
-    global new_todo_name
+
     with ui.dialog().props("full-width full-height") as dialog, ui.card().classes("w-full h-full"):
         with ui.column().classes('w-full h-full'):
             # HEADER SECTION
@@ -371,7 +313,13 @@ def build_create_todo_dialog() -> ui.dialog:
                 # This button will eventually save the new to-do
                 ui.button("Create", on_click=lambda: (
                     ui.notify("To-do Created!"),
-                    add_todo_to_list(),
+                    database.create_todo(todo_name=new_todo_name.value, status=status_dropdown_selector.value,
+                                         priority=priority_dropdown_selector.value,
+                                         fire_or_clock=fire_dropdown_selector.value,
+                                         source=source_dropdown_selector.value,
+                                         deadline=date.value, modified_time=modified_time_label.text,
+                                         created_time=created_time_label.text,
+                                         comments=comment_editor_property.value),
                     dialog.close()  # Close the dialog after creation
                 )).classes(style.AT_CREATE_TODO_BTN_STYLE).props('no-caps')
 
@@ -379,8 +327,6 @@ def build_create_todo_dialog() -> ui.dialog:
             with ui.scroll_area().classes('w-full flex-grow p-4'):
                 ui.label("Add properties for your new to-do below.")
                 # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT NEW TO-DO : PRIORITY, STATUS, FIRE, SOURCE
-                global status_property_h3, priority_property_h3, fire_property_h3, source_property_h3
-                global status_dropdown_selector, priority_dropdown_selector, fire_dropdown_selector, source_dropdown_selector
                 # Display this section as a row of 4 cells (grid element)
                 with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                     with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -408,8 +354,6 @@ def build_create_todo_dialog() -> ui.dialog:
                                 style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
                 # 2nd SECTION TO DEFINE DATE INFO ABOUT NEW TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
-                global deadline_property_h3, created_time_property_h3, modified_time_property_h3, attachment_property_h3
-                global created_time_label, modified_time_label, upload_file_property
                 # Display this section as a row of 3 cells (grid element)
                 with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                     with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -438,7 +382,6 @@ def build_create_todo_dialog() -> ui.dialog:
                                 'dense borderless')
 
                 # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
-                global comments_property_h3, comment_editor_property
                 # Display this section as a row containing 2 columns
                 with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
                     # Column N°1/2 : comments section
@@ -469,8 +412,9 @@ with ui.column().classes("w-full h-screen") as main_container:
                                                         lambda: (refresh_list_view(property_to_use_to_group="source"),
                                                                  details_dialog.close())) as details_dialog:
         with ui.card().classes("w-full h-full"):
-            # The container for the dynamic content that will occupy all the avaialable space inside
+            # The container for the dynamic content that will occupy all the available space inside
             details_content_area = ui.column().classes('w-full h-full')
+
 
 # Testing
 ui.run(language='fr')
