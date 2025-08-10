@@ -1,3 +1,8 @@
+############# TODOS
+# TODO Add an highlight color behind the status' name, or group-name in list view (to copy airtable styling)
+# TODO Change/improve ui.label('Here is my list of priority : "Deadline", "Fire", "Priority", "Status"')
+
+
 ############# TITLE LIBRARIES AND MODULES #############
 pass
 from nicegui import app, ui
@@ -23,11 +28,16 @@ ui.add_head_html('''
 ############# TITLE GLOBAL VARIABLES #############
 pass
 
-# UI ELEMENTS VARIABLES
-# Main page elements
+# UI - LIST VIEW
 list_view_page = None
+todo_list_view = None
+filter_bar = None
+list_view_groups_state = set()
 
-# To-do details window elements
+# Dictionary to store the user's selections
+active_filters = {}
+
+# UI - SINGLE TO-DO FOCUS VIEW
 todo_details_window = None
 mark_done_btn = None
 todo_header_input = None
@@ -49,22 +59,16 @@ upload_file_property = None
 modified_time_label = None
 comment_editor_property = None
 
-# To-do creation window elements
-todo_creation_window = None
-todo_button = None
-new_todo_name = None
-
-# To-do grouped list view
-todo_list_view = None
-filter_bar = None
-
-# Dictionary to store the user's selections
-active_filters = {}
-
 # Placeholders for the dialog and its content area
 details_dialog = None
 details_content_area = None
 dialog_box_container = None
+
+# UI - TO-DO CREATION
+todo_creation_window = None
+todo_button = None
+new_todo_name = None
+
 
 ############# TITLE CLI FUNCTIONS #############
 
@@ -101,22 +105,33 @@ def add_todo_to_list():
 ############# TITLE LAYOUT FUNCTIONS #############
 pass
 
+
 # TODOS LIST VIEW (FILTER + NEW TO-DO)
 def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
     """Creates an Airtable-like grouped list view."""
     grouped_todos = group_todos_by_property(todos_list=todos_list, grouping_property=property_used_for_grouping)
 
-    # Style for the to-do item rows
-    item_row_style = 'w-full p-2 bg-white hover:bg-gray-50 cursor-pointer'
+    global list_view_groups_state
 
-    # Loop through each status group (e.g., "Todo", "Done")
-    for status, todos in grouped_todos.items():
+    def update_groups_state(group_name: str):
+        """Adds or removes the group name from the state set."""
+        if group_name in list_view_groups_state:
+            list_view_groups_state.discard(group_name)
+        elif group_name not in list_view_groups_state:
+            list_view_groups_state.add(group_name)
+
+    # Loop through each group
+    for group_name, todos in grouped_todos.items():
+
+        # Check if group name is inside my list_view_groups_state set
+        is_group_expanded = True if group_name in list_view_groups_state else False
+
         # Create a collapsible header for the group
-        # TODO Add an highlight color behind the status' name (to copy airtable styling)
-        with ui.expansion(f'{status} ({len(todos)} items)', icon='drag_indicator').classes('w-full'):
+        with ui.expansion(f'{group_name} ({len(todos)} items)', icon='drag_indicator', value=is_group_expanded).classes(
+                'w-full') as group_header:
             # This column holds all the to-dos for this group
+            ui.label('Here is my list of priority : "Deadline", "Fire", "Priority", "Status"')
             with ui.column().classes('w-full gap-0'):
-                # TODO Add here sub-titles like "Deadline", "Fire", "Priority", "Status"
                 # Loop through each to-do in the current group
                 for todo in todos:
                     # The main row for a single to-do item
@@ -145,6 +160,13 @@ def create_grouped_list_view(todos_list: list, property_used_for_grouping: str):
                         ui.label(deadline).classes('w-32 text-right')
 
                     ui.separator()
+
+        # .on() method is used to listen for an event (like a mouse click or a key press) on a UI element
+        # and run a function when that event happens.
+        # 'update:model-value' is a powerful way of tracking any changes of any type occuring on my UI element
+        # because it captures any modification to the component's data.
+        group_header.on('update:model-value',
+                        lambda name=group_name: update_groups_state(group_name=name))
 
 
 def create_filter_dropdown(name: str, options: List[str], filters: Dict):
@@ -191,7 +213,7 @@ def create_filter_bar(filters: Dict):
         create_filter_dropdown('Source', SOURCE_OPTIONS, filters)
 
 
-def show_list_view():
+def show_list_view(property_to_use_to_group: str):
     """
         Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
         :return: list_view_page column element
@@ -215,14 +237,14 @@ def show_list_view():
         # The list of todos
         with ui.column().classes("w-full"):
             # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
-            create_grouped_list_view(todos_list=all_database_todos, property_used_for_grouping="source")
+            create_grouped_list_view(todos_list=all_database_todos, property_used_for_grouping=property_to_use_to_group)
     return list_view_page
 
 
-def refresh_list_view():
+def refresh_list_view(property_to_use_to_group: str):
     global list_view_page
     list_view_page.clear()
-    show_list_view()
+    show_list_view(property_to_use_to_group=property_to_use_to_group)
 
 
 # SINGLE TO-DO FOCUS VIEW
@@ -439,12 +461,12 @@ pass
 
 with ui.column().classes("w-full h-screen") as main_container:
     # Build the list view container and content inside
-    show_list_view()
+    show_list_view(property_to_use_to_group="source")
 
     # Build the dialog box hidden for the moment
     # until a todo-row from list view is on_click & opens up the details_dialog box element
     with ui.dialog().props('full-width full-height').on('escape-key',
-                                                        lambda: (refresh_list_view(),
+                                                        lambda: (refresh_list_view(property_to_use_to_group="source"),
                                                                  details_dialog.close())) as details_dialog:
         with ui.card().classes("w-full h-full"):
             # The container for the dynamic content that will occupy all the avaialable space inside
