@@ -38,7 +38,6 @@ active_filters = {}
 # Placeholders for the dialog and its content area
 details_dialog = None
 details_content_area = None
-create_btn_clicked = False
 
 
 ############# TITLE CLI FUNCTIONS #############
@@ -172,32 +171,35 @@ def show_list_view(property_to_use_to_group: str):
         Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
         :return: list_view_page column element
     """
-    global list_view_page
+    global list_view_container
 
     all_database_todos: list = database.get_all_todos()
-    list_view_page = ui.column().classes("w-full h-screen")
+    # list_view_page = ui.column().classes("w-full h-screen")
 
-    with list_view_page, ui.column().classes("w-full h-screen"):
-        # 1. Build the creation dialog. It will be invisible until opened.
-        create_dialog = build_create_todo_dialog()
+    with list_view_container:
+        with ui.column().classes("w-full h-screen"):
+            # 1. Build the creation dialog. It will be invisible until opened.
+            create_dialog = build_create_todo_dialog()
 
-        # 2. Build the filter bar & "new todo" header
-        with ui.row().classes('w-full justify-between items-center p-4 border-b'):
-            # filter bar
-            create_filter_bar(active_filters)
-            # new-todo
-            ui.button('New To-Do', icon='add', on_click=create_dialog.open).props('color=primary')
+            # 2. Build the filter bar & "new todo" header
+            with ui.row().classes('w-full justify-between items-center p-4 border-b'):
+                # filter bar
+                create_filter_bar(active_filters)
+                # new-todo
+                ui.button('New To-Do', icon='add', on_click=create_dialog.open).props('color=primary')
 
-        # The list of todos
-        with ui.column().classes("w-full"):
-            # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
-            create_grouped_list_view(todos_list=all_database_todos, property_used_for_grouping=property_to_use_to_group)
+            # The list of todos
+            with ui.column().classes("w-full"):
+                # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
+                create_grouped_list_view(todos_list=all_database_todos,
+                                         property_used_for_grouping=property_to_use_to_group)
+
     return list_view_page
 
 
 def refresh_list_view(property_to_use_to_group: str):
-    global list_view_page
-    list_view_page.clear()
+    global list_view_container
+    list_view_container.clear()
     show_list_view(property_to_use_to_group=property_to_use_to_group)
 
 
@@ -320,6 +322,7 @@ def build_create_todo_dialog() -> ui.dialog:
                                          deadline=date.value, modified_time=modified_time_label.text,
                                          created_time=created_time_label.text,
                                          comments=comment_editor_property.value),
+                    refresh_list_view(property_to_use_to_group="source"),
                     dialog.close()  # Close the dialog after creation
                 )).classes(style.AT_CREATE_TODO_BTN_STYLE).props('no-caps')
 
@@ -403,18 +406,21 @@ def build_create_todo_dialog() -> ui.dialog:
 pass
 
 with ui.column().classes("w-full h-screen") as main_container:
-    # Build the list view container and content inside
-    show_list_view(property_to_use_to_group="source")
+    with ui.column().classes("w-full h-screen") as list_view_container:
+        # Build the list view container and content inside
+        show_list_view(property_to_use_to_group="source")
 
-    # Build the dialog box hidden for the moment
-    # until a todo-row from list view is on_click & opens up the details_dialog box element
-    with ui.dialog().props('full-width full-height').on('escape-key',
-                                                        lambda: (refresh_list_view(property_to_use_to_group="source"),
-                                                                 details_dialog.close())) as details_dialog:
-        with ui.card().classes("w-full h-full"):
-            # The container for the dynamic content that will occupy all the available space inside
-            details_content_area = ui.column().classes('w-full h-full')
+        # Build the TO-DO DETAILS DIALOG BOX hidden for the moment
+        # until a todo-row from list view is on_click & opens up the details_dialog box element
+        with ui.dialog().props('full-width full-height').on('escape-key',
+                                                            lambda: (
+                                                            refresh_list_view(property_to_use_to_group="source"),
+                                                            details_dialog.close())) as details_dialog:
+            with ui.card().classes("w-full h-full"):
+                # The container for the dynamic content that will occupy all the available space inside
+                details_content_area = ui.column().classes('w-full h-full')
 
+    # TODO get inspiration from "Todo details window" to manage opening/closing of todo creation window
 
 # Testing
 ui.run(language='fr')
