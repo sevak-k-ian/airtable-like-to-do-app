@@ -1,9 +1,12 @@
-############# TODOS
-# TODO Add an highlight color behind the status' name, or group-name in list view (to copy airtable styling)
-# TODO Change/improve ui.label('Here is my list of priority : "Deadline", "Fire", "Priority", "Status"')
-# TODO in todo list view, for todo-row change position of Fire icon, place it as a prefix of the todo row
-# TODO correct deadline label format
-# TODO ⚠️⚠️⚠️️ [if possible]to reduce size of script, create a single UI component which is "one️_todo_focus_window" that will be used for todo details showing and todo creation process
+############# TODO LIST
+# Logic / interactoins
+# 1) Create a "delete todo" button in every template focus window
+# 2) Clicking that button must delete from DB the aimed todo and refresh the list view
+
+# Design / Esthetic
+# 1) Add an highlight color behind the status' name, or group-name in list view (to copy airtable styling)
+# 2) Change/improve ui.label('Here is my list of priority : "Deadline", "Fire", "Priority", "Status"')
+# 3) In todo list view, for todo-row change position of Fire icon, place it as a prefix of the todo row
 
 
 ############# TITLE LIBRARIES AND MODULES #############
@@ -16,34 +19,23 @@ import database
 import style
 from constant import NOW_FR_DATE, STATUS_OPTIONS, PRIORITY_OPTIONS, SOURCE_OPTIONS, FIRE_OPTIONS
 
-# Load the "Inter" font from Google Fonts for the whole page
-ui.add_head_html('''
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
-<style>
-    /* Apply the font to all elements that use it */
-    body, .font-inter {
-        font-family: 'Inter', sans-serif;
-    }
-</style>
-''')
+style.GOOGLE_INTER_FONT  # Load the "Inter" font for the whole page
 
 ############# TITLE GLOBAL VARIABLES #############
-list_view_groups_state = set()  # Records the state of the ui.expansion() elements in grouped list view
-active_filters = {}  # Dictionary to store the user's selections made by selecting filters in the grouped list view
+list_view_groups_state = set()  # Records the state of the ui.expansion() elements in grouped_list_view
+active_filters = {}  # Stores user's selections when selecting filters in the grouped_list_view
 
 
 ############# TITLE CLI FUNCTIONS #############
 
 def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
-    """Groups a list of to-do dictionaries by their 'status' key.
+    """Reorganizes a flat list of to-dos into a dictionary of groups.
         Details :
-        - defaultdict(list) creates an empty dict
-        - then for every todo, it will create a new key that is the provided grouping_property
-        - it will insert a pair key (aka. "grouping_property") - value (aka. a list todos (dicts) sharing this grouping_property))
-        - if the grouping_property already exists as a key inside grouped dict, then the todo will be insert as a new item
-        - of the value-list linked to this existing key-grouping-property
+        1. defaultdict(list) creates an empty dict that can be filled with key-list_value
+        2. for every todo (loop), if needed, a new key is created that corresponds to the provided grouping_property
+        (if the grouping_property already exists as a key inside grouped dict, then go step 3.)
+        3. it sticks the todo (dict) inside the value-list linked to the correct key/grouping_property
+        4. returns a dict (key = grouping_property) of list of dicts [todos]
     """
     grouped = defaultdict(list)
     for todo in todos_list:
@@ -55,51 +47,59 @@ def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> d
 pass
 
 
-# TODOS LIST VIEW (FILTER + NEW TO-DO)
+# ABOUT THE LIST VIEW AND ITS ELEMENTS
 def build_grouped_list_view(database_todos_list: list, property_used_for_grouping: str):
-    """Creates an Airtable-like grouped list view."""
-    grouped_todos = group_todos_by_property(todos_list=database_todos_list,
-                                            grouping_property=property_used_for_grouping)
-
+    """Creates an Airtable-like grouped list view.
+        Headers (= grouping_property) can expand and show rows (= todos under the group)
+    """
+    # This set() variable will save which group.s are expanded (or not) in order to find back our list view
+    # as it was once we leave a to-do single window we
     global list_view_groups_state
 
     def update_groups_state(group_name: str):
-        """Adds or removes the group name from the state set."""
+        """Adds or removes the group name from the list_view_groups_state set().
+            This function will be triggered every time there is a change occuring on the header of any group
+            thanks to .on('update:model-value',...) at the end of build_grouped_list_view function
+        """
         if group_name in list_view_groups_state:
             list_view_groups_state.discard(group_name)
         elif group_name not in list_view_groups_state:
             list_view_groups_state.add(group_name)
 
+    # Creates a dict where keys are str (=grouping_property) and values are list of todos-dict
+    grouped_todos = group_todos_by_property(todos_list=database_todos_list,
+                                            grouping_property=property_used_for_grouping)
     # Loop through each group
-    for group_name, todos in grouped_todos.items():
+    for group_header_name, list_of_todos in grouped_todos.items():
 
         # Check if group name is inside my list_view_groups_state set
-        is_group_expanded = True if group_name in list_view_groups_state else False
+        is_group_expanded = True if group_header_name in list_view_groups_state else False
 
         # Create a collapsible header for the group
-        with ui.expansion(f'{group_name} ({len(todos)} items)', icon='drag_indicator', value=is_group_expanded).classes(
-                'w-full') as group_header:
-            # This column holds all the to-dos for this group
+        with ui.expansion(f'{group_header_name} ({len(list_of_todos)} items)',
+                          value=is_group_expanded).props("switch-toggle-side").classes(
+            'w-full') as group_header:
             ui.label('Here is my list of priority : "Deadline", "Fire", "Priority", "Status"')
+            # This column holds all the todos for this group
             with ui.column().classes('w-full gap-0'):
-                # Loop through each to-do in the current group
-                for todo in todos:
-                    # The main row for a single to-do item
+                # Loop through each todo in the current group (and its todos list)
+                for todo in list_of_todos:
+                    # A row = a single to-do item
                     with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer').on(
                             'click', lambda t=todo: open_todo_details(t)):
                         # To-do name (takes up all available space)
                         ui.label(todo['todo_name']).classes('flex-grow')
 
-                        # Status "Pill"
+                        # Status pill
                         status = todo["status"]
                         ui.label(status).classes(
                             f'w-28 text-center text-sm p-1 rounded-full {style.STATUS_COLORS.get(status, "bg-gray-200")}')
 
-                        # Fire Icon
-                        is_urgent = todo["fire_or_clock"]
-                        ui.label('🔥' if is_urgent else '').classes('w-12 text-center text-xl')
+                        # Fire icon
+                        fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
+                        ui.label(text=f"{fire_icon_to_display}").classes('w-12 text-center text-xl')
 
-                        # Priority "Pill"
+                        # Priority pill
                         priority = todo["priority"]
                         ui.label(priority).classes(
                             f'w-24 text-center text-sm p-1 rounded-full {style.PRIORITY_COLORS.get(priority, "bg-gray-200")}')
@@ -110,17 +110,18 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
 
                     ui.separator()
 
-        # .on() method is used to listen for an event (like a mouse click or a key press) on a UI element and run a function when that event happens.
-        # 'update:model-value' tracks any changes of any type occuring on my UI element
+        # .on() method is used to listen for an event (like a mouse click or a key press) on a UI element
+        # then it runs a function when that event happens.
+        # 'update:model-value' tracks any changes of any type occurring on my UI element
         group_header.on('update:model-value',
-                        lambda name=group_name: update_groups_state(group_name=name))
+                        lambda name=group_header_name: update_groups_state(group_name=name))
 
 
-def build_filter_dropdown(name: str, options: List[str], filters: Dict):
-    """Creates a robust, Airtable-style filter button with its own menu."""
+def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Dict):
+    """Creates an Airtable-style filter button with its own menu."""
 
-    # This function defines the text logic
     def get_button_text(selections: List[str]) -> str:
+        """Defines the text appearing inside the filtering dropdown button when selection is made"""
         if not selections:
             return name
         elif len(selections) == 1:
@@ -128,6 +129,20 @@ def build_filter_dropdown(name: str, options: List[str], filters: Dict):
             return f'{name}: {value_text[:10] + "..." if len(value_text) > 10 else value_text}'
         else:
             return f'{name}: {len(selections)} selected'
+
+    def active_filters_notification_msg(active_filters: dict) -> str:
+        """Builds a nice sentence that will be displayed each time a filter option is (un)selected"""
+        sentence_items = []
+
+        for property, list_of_selections in active_filters.items():
+            filter_not_empty = True if len(list_of_selections) > 0 else False
+            if filter_not_empty:
+                for selection in list_of_selections:
+                    sentence_items.append(f"{selection}")
+
+        joined_str_items: str = "  │  ".join(sentence_items)
+        formatted_sentence: str = f"Active filters : {joined_str_items}."
+        return formatted_sentence
 
     # Initialize the filter entry
     filters[name.lower()] = []
@@ -143,7 +158,8 @@ def build_filter_dropdown(name: str, options: List[str], filters: Dict):
             ui.select(options, multiple=True) \
                 .classes('w-56') \
                 .bind_value(filters, name.lower()) \
-                .on('update:model-value', lambda: (button.update(), ui.notify(f'Active filters: {filters}')))
+                .on('update:model-value',
+                    lambda: (button.update(), ui.notify(f'{active_filters_notification_msg(active_filters)}')))
 
         # The button's visual content (label and icon)
         with ui.row().classes('items-center gap-1'):
@@ -151,13 +167,13 @@ def build_filter_dropdown(name: str, options: List[str], filters: Dict):
             ui.icon('expand_more', size='sm')
 
 
-def build_filter_bar(filters: Dict):
+def build_filter_bar_save_choices(filters: dict):
     """Creates a horizontal bar of filter dropdowns."""
     with ui.row().classes('items-center gap-2 p-2'):
         ui.label('Filter by:').classes('text-gray-500')
-        build_filter_dropdown('Status', STATUS_OPTIONS, filters)
-        build_filter_dropdown('Priority', PRIORITY_OPTIONS, filters)
-        build_filter_dropdown('Source', SOURCE_OPTIONS, filters)
+        build_filter_dropdown_btn_element('Status', STATUS_OPTIONS, filters)
+        build_filter_dropdown_btn_element('Priority', PRIORITY_OPTIONS, filters)
+        build_filter_dropdown_btn_element('Source', SOURCE_OPTIONS, filters)
 
 
 def show_list_view(property_to_use_to_group: str):
@@ -165,7 +181,7 @@ def show_list_view(property_to_use_to_group: str):
         Return the layout that will contain the main to-do list view (with filter bar) and to-do creation window.
         :return: list_view_page column element
     """
-    global list_view_container
+    global list_view_container  # Permanent variable at end of script to store this view
 
     all_database_todos: list = database.get_all_todos()
 
@@ -173,7 +189,7 @@ def show_list_view(property_to_use_to_group: str):
         # Build the filter bar & "new todo" header
         with ui.row().classes('w-full justify-between items-center p-4 border-b'):
             # filter bar
-            build_filter_bar(active_filters)
+            build_filter_bar_save_choices(active_filters)
             # new-todo
             todo_creation_dialog_box = build_create_todo_dialog()  # The creation dialog will be invisible until opened.
             ui.button('New To-Do', icon='add', on_click=todo_creation_dialog_box.open).props('color=primary')
@@ -186,43 +202,64 @@ def show_list_view(property_to_use_to_group: str):
 
 
 def refresh_list_view(property_to_use_to_group: str):
+    """When triggered by pressing on the top-right corner CTA of a single focus todo window, this function
+    cleans up and build again the group list view that appears in the global scope var list_view_container.
+    """
     global list_view_container
     list_view_container.clear()
     show_list_view(property_to_use_to_group=property_to_use_to_group)
 
 
-# SINGLE-FOCUS TO-DO SHARED COMPONENTS
+# ABOUT SINGLE TO-DO WINDOW AND ITS ELEMENTS
 def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.column:
+    """Builds the shared UI form for creating or editing a to-do item.
+
+        This function acts as a reusable component that generates the entire layout
+        for a focused to-do view, including header, properties, and comments sections.
+        It adapts its behavior based on the specified usage type ('create' or 'edit').
+
+        Args:
+            todo_data: A dictionary containing the data for a to-do.
+                       - For 'edit' mode, this should be a full dictionary from the database.
+                       - For 'create' mode, this can be a dictionary with default values.
+            usage_type: A string that determines the component's mode ('create' or 'edit').
+                        This controls which action button (or CTA) is displayed (at the top-right corner of the window) and its behavior.
+
+        Returns:
+            The `ui.column` element containing the entire shared layout.
+        """
     with ui.column().classes('w-full h-full bg-white p-4') as shared_one_todo_focus_layout:
-        # HEADER SECTION
+
+        # HEADER SECTION (to-do name + CTA)
         with ui.row().classes("w-full no-wrap items-center p-2"):
-            # Pass the actual to-do name to the input
 
-            def define_todo_name_type() -> ui.input:
-                if usage_type == "edit":
-                    edited_todo_name = ui.input(value=todo_data['todo_name'],
-                                                on_change=lambda e: database.update_one_column(todo_id=todo_data["id"],
-                                                                                               column_to_update="todo_name",
-                                                                                               new_status=e.value)).classes(
-                        style.AT_TODO_HEADER_STYLE).props("borderless")
-                    print("edit mode")
-                    return edited_todo_name
-                elif usage_type == "create":
-                    initial_todo_name = ui.input(value=todo_data['todo_name']).classes(
-                        style.AT_TODO_HEADER_STYLE).props("borderless")
-                    print("creation mode")
-                    return initial_todo_name
+            # To-do name
+            todo_name = ui.input(value=todo_data['todo_name']).classes(style.AT_TODO_HEADER_STYLE).props(
+                "borderless")
 
-            todo_name = define_todo_name_type()
-
+            # Generates adequate CTA btn depending on edit or create usecase
             def define_btn_type() -> ui.button:
+                """Dynamically creates and returns either an 'Edit' or 'Create' button.
+                    Returns: ui.button
+                """
                 if usage_type == "edit":
-                    generic_btn = ui.button(text="Edit", on_click=lambda: ui.notify("To-do edited!")).classes(
+                    generic_btn = ui.button(text="Edit", on_click=lambda: (
+                        database.update_todo_entirely(todo_id=todo_data["id"], todo_name=todo_name.value,
+                                                      status=status_dropdown_selector.value,
+                                                      priority=priority_dropdown_selector.value,
+                                                      fire_or_clock=fire_dropdown_selector.value,
+                                                      source=source_dropdown_selector.value,
+                                                      deadline=date.value, modified_time=modified_time_label.text,
+                                                      created_time=created_time_label.text,
+                                                      comments=comment_editor_property.value),
+                        ui.notify("✅ Todo edited!"),
+                        refresh_list_view(property_to_use_to_group="source"))).classes(
                         style.AT_DONE_BTN_STYLE).props('no-caps')
                     return generic_btn
+
                 elif usage_type == "create":
                     generic_btn = ui.button(text="Create", on_click=lambda: (
-                        ui.notify("To-do Created!"),
+                        ui.notify("✅ Todo created!"),
                         database.create_todo(todo_name=todo_name.value, status=status_dropdown_selector.value,
                                              priority=priority_dropdown_selector.value,
                                              fire_or_clock=fire_dropdown_selector.value,
@@ -233,13 +270,13 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                         refresh_list_view(property_to_use_to_group="source")
                     )).classes(style.AT_DONE_BTN_STYLE).props('no-caps')
                     return generic_btn
+
                 else:
                     print("Error")
 
             action_btn = define_btn_type()
 
-        # 1st SECTION : PRIORITY, STATUS, FIRE, SOURCE
-        # Display this section as a row of 4 cells (grid element)
+        # 1st SECTION (4 cells grid element in a row) : PRIORITY, STATUS, FIRE, SOURCE
         with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
             with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
                 # 1/4 : status
@@ -267,8 +304,7 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                         options=SOURCE_OPTIONS, value=todo_data["source"]).classes(
                         style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
-        # 2nd SECTION : DEADLINE, CREATED TIME, LAST MODIFIED TIME
-        # Display this section as a row of 3 cells (grid element)
+        # 2nd SECTION (3 cells grid element in a row) : DEADLINE, CREATED TIME, LAST MODIFIED TIME
         with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
             with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
                 # 1/3 : deadline
@@ -293,8 +329,7 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                     modified_time_label = ui.label(text="28/05/2025").classes(style.AT_DATE_LABEL_STYLE).props(
                         'dense borderless')
 
-        # 3rd SECTION : COMMENTS & FILE ATTACHMENTS
-        # Display this section as a row containing 2 columns
+        # 3rd SECTION (2 cols in a row) : COMMENTS & FILE ATTACHMENTS
         with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
             # 1/2 : comments section
             with ui.column().classes('w-[75%]'):
@@ -307,33 +342,13 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                     on_upload=lambda e: ui.notify(f'Uploaded {e.name}')).classes(
                     style.AT_UPLOAD_ZONE_STYLE).props(
                     'dense borderless')
+
+    # Return the ui.column() containing all
     return shared_one_todo_focus_layout
 
 
-# SINGLE TO-DO FOCUS VIEW
-def populate_todo_details_dialog_box(one_todo_from_database: dict):
-    """Populates the todo_details_content_area element with the UI for a specific to-do."""
-    global todo_details_content_area, todo_details_dialog
-    # Clear any previous content
-    todo_details_content_area.clear()
-
-    # Build the UI inside the content area
-    with todo_details_content_area:
-        # The scroll area is now inside the content area
-        with ui.scroll_area().classes('w-full h-full'):
-            build_todo_window_shared_layout(todo_data=one_todo_from_database, usage_type="edit")
-
-
-def open_todo_details(todo: dict):
-    """Clears, populates, and opens the details dialog for a given to-do."""
-    global todo_details_dialog, todo_details_content_area
-    populate_todo_details_dialog_box(todo)
-    todo_details_dialog.open()
-
-
-# NEW TO-DO CREATION
 def build_create_todo_dialog() -> ui.dialog:
-    """Builds the 'Create To-Do' dialog window with its content."""
+    """Builds the 'Create Todo" dialog window with its content."""
 
     empty_todo_dict: dict = {
         "todo_name": "Enter new to-do name...",
@@ -352,32 +367,38 @@ def build_create_todo_dialog() -> ui.dialog:
         return todo_creation_dialog
 
 
+def build_todos_details_dialog(todo_to_display: dict) -> ui.dialog:
+    """Builds the 'Todo details" dialog window with its content."""
+    with ui.dialog().props("full-width full-height") as todo_details_dialog:
+        build_todo_window_shared_layout(todo_data=todo_to_display, usage_type="edit")
+        return todo_details_dialog
+
+
+def open_todo_details(todo: dict):
+    """Builds and displays the details dialog for a specific to-do.
+
+        This function is triggered when a to-do item is clicked, cf. build_grouped_list_view() function.
+        It takes a to-do's data, passes it to a builder function to construct
+        the details dialog (build_todos_details_dialog), and then opens the dialog on the screen.
+
+        Args:
+            todo: A dictionary containing the data for the selected to-do.
+        """
+    todo_details_dialog = build_todos_details_dialog(todo_to_display=todo)
+    todo_details_dialog.open()
+
+
 ############# TITLE MAIN LAYOUT LOGIC #############
 pass
 
-# GLOBAL VARIABLES FOR CONTAINER ELEMENTS
-todo_details_dialog = None
-todo_details_content_area = None
 list_view_container = None
 
 with ui.column().classes("w-full h-screen") as main_container:
     # Assign the created element to your global variable
     list_view_container = ui.column().classes("w-full h-screen")
 
-    # Build the initial list view inside the container
+    # Build the initial list view inside that list_view_container
     show_list_view(property_to_use_to_group="source")
-
-    # Build the TO-DO DETAILS DIALOG BOX hidden for the moment and assign it to the global variable
-    with ui.dialog().props('full-width full-height').on('escape-key',
-                                                        lambda: (
-                                                                refresh_list_view(
-                                                                    property_to_use_to_group="source"),
-                                                                todo_details_dialog.close())) as local_scope_dialog:
-        # Assign the created dialog to my global variable
-        todo_details_dialog = local_scope_dialog
-        with ui.card().classes("w-full h-full"):
-            # Assign the created column to your global variable
-            todo_details_content_area = ui.column().classes('w-full h-full')
 
 # Testing
 ui.run(language='fr')

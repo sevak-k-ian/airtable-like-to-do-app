@@ -1,3 +1,18 @@
+from nicegui import ui
+
+# "Inter" font from Google Fonts for the whole page
+GOOGLE_INTER_FONT = ui.add_head_html('''
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    /* Apply the font to all elements that use it */
+    body, .font-inter {
+        font-family: 'Inter', sans-serif;
+    }
+</style>
+''')
+
 # Style for to-do name in to-do details window
 AT_TODO_HEADER_STYLE = (
     'w-[85%] bg-white font-inter font-bold text-zinc-900 text-[31px] '

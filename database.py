@@ -10,8 +10,8 @@ from zoneinfo import ZoneInfo
 # FIRE_OPTIONS = ["🔥", "⏰", ""]
 
 
-# DB COLUMNS ARE :
-# ['id', 'todo_name', 'status', 'priority', 'fire_or_clock', 'source', 'deadline', 'modified_time', 'created_time', 'comments']
+# DB 10 COLUMNS ARE :
+# ['id', 'todo_name', 'status', 'priority', 'fire_or_clock', 'source', 'deadline', 'modified_time', 'created_time', 'comments', 'files']
 
 
 def init_db():
@@ -73,7 +73,50 @@ def create_todo(todo_name: str, status: str, priority: str, fire_or_clock: str, 
 
         query: str = "INSERT INTO todos (todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         cursor.execute(query, (
-        todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments))
+            todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments))
+        connection.commit()
+
+
+def update_todo_entirely(todo_id: int, todo_name: str, status: str, priority: str, fire_or_clock: str, source: str,
+                         deadline: str,
+                         modified_time: str, created_time: str, comments: str):
+    """
+        Updates an entire to-do record in the database based on its ID.
+        Note: created_time is passed but not used, as it should not be changed.
+        """
+    with sqlite3.connect("todos.db") as connection:
+        cursor = connection.cursor()
+
+        # The SQL query to update all relevant columns for a specific to-do.
+        query = """
+                UPDATE todos SET
+                    todo_name = ?,
+                    status = ?,
+                    priority = ?,
+                    fire_or_clock = ?,
+                    source = ?,
+                    deadline = ?,
+                    comments = ?,
+                    modified_time = ?
+                WHERE
+                    id = ?
+            """
+
+        # The tuple of values to substitute into the query's '?' placeholders.
+        # The order must exactly match the order of the '?' in the query.
+        values_tuple = (
+            todo_name,
+            status,
+            priority,
+            fire_or_clock,
+            source,
+            deadline,
+            comments,
+            modified_time,
+            todo_id  # This corresponds to the final '?' in the WHERE clause.
+        )
+
+        cursor.execute(query, values_tuple)
         connection.commit()
 
 
@@ -112,83 +155,15 @@ now_french = now_utc.astimezone(french_timezone)
 # 3. Format the result into your desired string format
 NOW_FR_DATE = now_french.strftime("%d/%m/%Y")
 
-# todo_test_1 = {
-#     "todo_name": "Finalize Q3 Marketing Report",
-#     "priority": "High",
-#     "source": "🔒 Perso",
-#     "fire_or_clock": "🔥",  # True for "fire_or_clock" (urgent)
-#     "deadline": (now_french - datetime.timedelta(days=2)),
-#     "status": "Done",
-#     "files": '["Q3_report_final_v2.docx", "presentation_slides.pptx"]',
-#     "comments": '["Approved by Jane Doe.", "Awaiting final sign-off from legal."]',
-#     "created_time": (now_french - datetime.timedelta(days=10)),
-#     "modified_time": (now_french - datetime.timedelta(days=2, hours=4)),
-# }
-#
-# todo_test_2 = {
-#     "todo_name": "Develop User Authentication Feature",
-#     "priority": "High",
-#     "source": "🔒 Perso",
-#     "fire_or_clock": "🔥",
-#     "deadline": (now_french - datetime.timedelta(days=5)),
-#     "status": "Done",
-#     "files": '"auth_module.py", "user_schema.sql"',
-#     "comments": '"Deployed to production in v1.2.", "Passed all security checks."',
-#     "created_time": (now_french - datetime.timedelta(days=25)),
-#     "modified_time": (now_french - datetime.timedelta(days=5, hours=1)),
-# }
-#
-# todo_test_3 = {
-#     "todo_name": "Book Flights for Paris Conference",
-#     "priority": "Medium",
-#     "source": "👩‍❤️‍👨 Famille",
-#     "fire_or_clock": "",  # False for "clock" (scheduled task)
-#     "deadline": (now_french - datetime.timedelta(days=15)),
-#     "status": "Todo",
-#     "files": "no files",
-#     "comments": "No comment",
-#     "created_time": (now_french - datetime.timedelta(days=30)),
-#     "modified_time": (now_french - datetime.timedelta(days=15)),
-# }
-#
-# todo_test_4 = {
-#     "todo_name": "TESTO Testo",
-#     "priority": "High",
-#     "source": "👩‍❤️‍👨 Famille",
-#     "fire_or_clock": "⏰",  # False for "clock" (scheduled task)
-#     "deadline": (now_french - datetime.timedelta(days=15)),
-#     "status": "Todo",
-#     "files": "no files",
-#     "comments": "No commantaires",
-#     "created_time": (now_french - datetime.timedelta(days=30)),
-#     "modified_time": (now_french - datetime.timedelta(days=15)),
-# }
-#
-
-# for todo_sample in [todo_test_1,todo_test_2,todo_test_3,todo_test_4] :
-#     create_todo(todo_name=todo_sample["todo_name"], status=todo_sample["status"],
-#                 source=todo_sample["source"], priority=todo_sample["priority"],
-#                 fire_or_clock=todo_sample["fire_or_clock"],
-#                 deadline=todo_sample["deadline"],
-#                 modified_time=todo_sample["modified_time"], created_time=todo_sample["created_time"],
-#                 comments=todo_sample["comments"])
-
-# # {
-# #     "todo_name": "Zizi pote",
-# #     "priority": "Medium",
-# #     "source": "🤱 Mama",
-# #     "fire_or_clock": "⏰",  # False for "clock" (scheduled task)
-# #     "deadline": (now_french - datetime.timedelta(days=15)),
-# #     "status": "Todo",
-# #     "files": ["flight_confirmation_AF123.pdf", "hotel_booking.pdf"],
-# #     "comments": ["Got a window seat.", "Total cost was within budget."],
-# #     "created_time": (now_french - datetime.timedelta(days=30)),
-# #     "modified_time": (now_french - datetime.timedelta(days=15)),
-# # }
-# #
-#
-#
-# # delete_todo(2)
-# # update_one_column(todo_id=1, column_to_update="status", new_status="Medium")
-# # delete_todo(todo_id=1)
-#
+todo_test = {
+    "todo_name": "Changement de tous les éléments",
+    "priority": "Medium",
+    "source": "🤱 Mama",
+    "fire_or_clock": "⏰",  # False for "clock" (scheduled task)
+    "deadline": (now_french - datetime.timedelta(days=15)),
+    "status": "Done",
+    "files": "no files",
+    "comments": "Yazooo",
+    "created_time": (now_french - datetime.timedelta(days=30)),
+    "modified_time": (now_french - datetime.timedelta(days=15))
+}
