@@ -184,15 +184,11 @@ def show_list_view(property_to_use_to_group: str):
             build_grouped_list_view(database_todos_list=all_database_todos,
                                     property_used_for_grouping=property_to_use_to_group)
 
-    # return list_view_container
-    print("(1) show_list_view executed")
-
 
 def refresh_list_view(property_to_use_to_group: str):
     global list_view_container
     list_view_container.clear()
     show_list_view(property_to_use_to_group=property_to_use_to_group)
-    print("(2) refresh_list_view executed")
 
 
 # SINGLE TO-DO FOCUS VIEW
@@ -292,9 +288,6 @@ def open_todo_details(todo: dict):
     global todo_details_dialog, todo_details_content_area
     populate_todo_details_dialog_box(todo)
     todo_details_dialog.open()
-    print("open_todo_details successfully triggered")
-    print(f"⚠️todo_details_dialog = {todo_details_dialog}")
-    print(f"⚠️todo_details_content_area = {todo_details_content_area}")
 
 
 # NEW TO-DO CREATION
