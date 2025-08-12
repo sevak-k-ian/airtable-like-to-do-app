@@ -64,9 +64,9 @@ pass
 
 
 # TODOS LIST VIEW (FILTER + NEW TO-DO)
-def build_grouped_list_view(todos_list: list, property_used_for_grouping: str):
+def build_grouped_list_view(database_todos_list: list, property_used_for_grouping: str):
     """Creates an Airtable-like grouped list view."""
-    grouped_todos = group_todos_by_property(todos_list=todos_list, grouping_property=property_used_for_grouping)
+    grouped_todos = group_todos_by_property(todos_list=database_todos_list, grouping_property=property_used_for_grouping)
 
     global list_view_groups_state
 
@@ -175,7 +175,6 @@ def show_list_view(property_to_use_to_group: str):
     global list_view_container
 
     all_database_todos: list = database.get_all_todos()
-    # list_view_page = ui.column().classes("w-full h-screen")
 
     with list_view_container:
         with ui.column().classes("w-full h-screen"):
@@ -192,16 +191,18 @@ def show_list_view(property_to_use_to_group: str):
             # The list of todos
             with ui.column().classes("w-full"):
                 # Use the active current todos from SQL DB to display the list of todos, grouped by "source"
-                build_grouped_list_view(todos_list=all_database_todos,
+                build_grouped_list_view(database_todos_list=all_database_todos,
                                         property_used_for_grouping=property_to_use_to_group)
 
-    return list_view_page
+    # return list_view_container
+    print("(1) show_list_view executed")
 
 
 def refresh_list_view(property_to_use_to_group: str):
     global list_view_container
     list_view_container.clear()
     show_list_view(property_to_use_to_group=property_to_use_to_group)
+    print("(2) refresh_list_view executed")
 
 
 # SINGLE TO-DO FOCUS VIEW
@@ -211,7 +212,7 @@ def open_todo_details(todo: dict):
     todo_details_dialog.open()
 
 
-def populate_todo_details_dialog_box(todo_to_show: dict):
+def populate_todo_details_dialog_box(one_todo_from_database: dict):
     """Populates the todo_details_content_area element with the UI for a specific to-do."""
     global todo_details_content_area
     # Clear any previous content
@@ -221,17 +222,18 @@ def populate_todo_details_dialog_box(todo_to_show: dict):
     with todo_details_content_area:
         # The scroll area is now inside the content area
         with ui.scroll_area().classes('w-full h-full'):
+
             # HEADER SECTION
             with ui.row().classes("w-full no-wrap items-center p-2"):
                 # Pass the actual to-do name to the input
-                ui.input(value=todo_to_show['todo_name'],
-                         on_change=lambda e: database.update_one_column(todo_id=todo_to_show["id"],
+                ui.input(value=one_todo_from_database['todo_name'],
+                         on_change=lambda e: database.update_one_column(todo_id=one_todo_from_database["id"],
                                                                         column_to_update="todo_name",
                                                                         new_status=e.value)).classes(
                     style.AT_TODO_HEADER_STYLE).props("borderless")
                 ui.button(text="Mark as done").classes(style.AT_DONE_BTN_STYLE).props('no-caps')
 
-            # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT TO-DO : PRIORITY, STATUS, FIRE, SOURCE
+            # 1st SECTION : PRIORITY, STATUS, FIRE, SOURCE
             # Display this section as a row of 4 cells (grid element)
             with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                 with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -239,28 +241,28 @@ def populate_todo_details_dialog_box(todo_to_show: dict):
                     with ui.column():
                         ui.label("Status").classes(style.AT_TODO_PROPERTIES_HEADING)
                         ui.select(options=STATUS_OPTIONS,
-                                  value=todo_to_show["status"]).classes(
+                                  value=one_todo_from_database["status"]).classes(
                             style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                     # 2/4 : priority
                     with ui.column():
                         ui.label("Priorité").classes(style.AT_TODO_PROPERTIES_HEADING)
                         ui.select(options=PRIORITY_OPTIONS,
-                                  value=todo_to_show["priority"]).classes(
+                                  value=one_todo_from_database["priority"]).classes(
                             style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                     # 3/4 : fire
                     with ui.column():
                         ui.label("Fire").classes(style.AT_TODO_PROPERTIES_HEADING)
                         ui.select(options=FIRE_OPTIONS,
-                                  value=todo_to_show["fire_or_clock"]).classes(
+                                  value=one_todo_from_database["fire_or_clock"]).classes(
                             style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                     # 4/4 : source
                     with ui.column():
                         ui.label("Source").classes(style.AT_TODO_PROPERTIES_HEADING)
                         ui.select(
-                            options=SOURCE_OPTIONS, value=todo_to_show["source"]).classes(
+                            options=SOURCE_OPTIONS, value=one_todo_from_database["source"]).classes(
                             style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
-            # 2nd SECTION TO DEFINE DATE INFO ABOUT TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
+            # 2nd SECTION : DEADLINE, CREATED TIME, LAST MODIFIED TIME
             # Display this section as a row of 3 cells (grid element)
             with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                 with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -286,7 +288,7 @@ def populate_todo_details_dialog_box(todo_to_show: dict):
                         ui.label(text="28/05/2025").classes(style.AT_DATE_LABEL_STYLE).props(
                             'dense borderless')
 
-            # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
+            # 3rd SECTION : COMMENTS & FILE ATTACHMENTS
             # Display this section as a row containing 2 columns
             with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
                 # 1/2 : comments section
@@ -308,10 +310,12 @@ def build_create_todo_dialog() -> ui.dialog:
 
     with ui.dialog().props("full-width full-height") as dialog, ui.card().classes("w-full h-full"):
         with ui.column().classes('w-full h-full'):
+
             # HEADER SECTION
             with ui.row().classes("w-full no-wrap items-center p-2"):
                 new_todo_name = ui.input(placeholder="Enter new to-do name...").classes(
                     style.AT_TODO_HEADER_STYLE).props("borderless")
+
                 # This button will eventually save the new to-do
                 ui.button("Create", on_click=lambda: (
                     ui.notify("To-do Created!"),
@@ -326,10 +330,10 @@ def build_create_todo_dialog() -> ui.dialog:
                     dialog.close()  # Close the dialog after creation
                 )).classes(style.AT_CREATE_TODO_BTN_STYLE).props('no-caps')
 
-            # CONTENT SECTION (you can add the rest of your form fields here)
+            # CONTENT SECTION
             with ui.scroll_area().classes('w-full flex-grow p-4'):
                 ui.label("Add properties for your new to-do below.")
-                # 1st SECTION TO DEFINE FUNDAMENTALS ABOUT NEW TO-DO : PRIORITY, STATUS, FIRE, SOURCE
+                # 1st SECTION : PRIORITY, STATUS, FIRE, SOURCE
                 # Display this section as a row of 4 cells (grid element)
                 with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                     with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -356,7 +360,7 @@ def build_create_todo_dialog() -> ui.dialog:
                                 options=SOURCE_OPTIONS).classes(
                                 style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
-                # 2nd SECTION TO DEFINE DATE INFO ABOUT NEW TO-DO : DEADLINE, CREATED TIME, LAST MODIFIED TIME
+                # 2nd SECTION : DEADLINE, CREATED TIME, LAST MODIFIED TIME
                 # Display this section as a row of 3 cells (grid element)
                 with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
                     with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
@@ -384,7 +388,7 @@ def build_create_todo_dialog() -> ui.dialog:
                                 style.AT_DATE_LABEL_STYLE).props(
                                 'dense borderless')
 
-                # 3rd AND LAST SECTION TO ALLOW COMMENTS AND FILE ATTACHMENTS
+                # 3rd SECTION : COMMENTS AND FILE ATTACHMENTS
                 # Display this section as a row containing 2 columns
                 with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
                     # 1/2 : comments section
