@@ -137,7 +137,7 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
             'w-full text-lg') as group_header:
             # Customize visually the header of the group with add_slot
             with group_header.add_slot("header"):
-                with ui.row().classes("items-center") :
+                with ui.row().classes("items-center"):
                     ui.label(f'{group_header_name}').classes("bg-gray-200 rounded px-2 py-1")
                     ui.label(f'{len(list_of_todos)}').classes("ml-1 text-gray-500")
 
@@ -149,15 +149,20 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
                     ui.label().classes('flex-grow')
                     # Add labels for each column, matching the widths of the data below
                     ui.label('Status').classes('w-28 text-center')
-                    ui.label('Fire').classes('w-12 text-center')
                     ui.label('Priority').classes('w-24 text-center')
                     ui.label('Deadline').classes('w-32 text-center')
 
                 # Loop through each todo in the current group (and its todos list)
                 for todo in list_of_todos:
+
                     # A row = a single to-do item
                     with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-base').on(
                             'click', lambda t=todo: open_todo_details(t)):
+
+                        # Fire icon
+                        fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
+                        ui.label(text=f"{fire_icon_to_display}").classes('w-12 text-center text-xl')
+
                         # To-do name (takes up all available space)
                         ui.label(todo['todo_name']).classes('flex-grow')
 
@@ -165,10 +170,6 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
                         status = todo["status"]
                         ui.label(status).classes(
                             f'w-28 text-center text-sm p-1 rounded-full {style.STATUS_COLORS.get(status, "bg-gray-200")}')
-
-                        # Fire icon
-                        fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
-                        ui.label(text=f"{fire_icon_to_display}").classes('w-12 text-center text-xl')
 
                         # Priority pill
                         priority = todo["priority"]
