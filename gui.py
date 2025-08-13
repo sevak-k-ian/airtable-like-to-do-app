@@ -3,7 +3,6 @@
 # 2) Make the filtering work
 
 # Design / Esthetic
-# 1) Add an highlight color behind the status' name, or group-name in list view (to copy airtable styling)
 # 3) In todo list view, for todo-row change position of Fire icon, place it as a prefix of the todo row
 
 
@@ -133,15 +132,20 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
         is_group_expanded = True if group_header_name in list_view_groups_state else False
 
         # Create a collapsible header for the group
-        with ui.expansion(f'{group_header_name} ({len(list_of_todos)} items)',
-                          value=is_group_expanded).props("switch-toggle-side").classes(
+        with ui.expansion(
+                value=is_group_expanded).props("switch-toggle-side").classes(
             'w-full text-lg') as group_header:
+            # Customize visually the header of the group with add_slot
+            with group_header.add_slot("header"):
+                with ui.row().classes("items-center") :
+                    ui.label(f'{group_header_name}').classes("bg-gray-200 rounded px-2 py-1")
+                    ui.label(f'{len(list_of_todos)}').classes("ml-1 text-gray-500")
 
-            # This column holds all the todos for this group
+            # This column holds all the todos of the group
             with ui.column().classes('w-full gap-0'):
                 # Mini header row on top of the todos inside the group
-                with ui.row().classes('w-full p-3 items-center text-sm text-gray-500 font-normal'):
-                    # This empty label acts as a spacer to align with the to-do names, by takink all the available space
+                with ui.row().classes('w-full px-2 py-0 items-center text-sm text-gray-500 font-normal'):
+                    # This empty label acts as a spacer to align with the to-do names, by taking all the available space
                     ui.label().classes('flex-grow')
                     # Add labels for each column, matching the widths of the data below
                     ui.label('Status').classes('w-28 text-center')
