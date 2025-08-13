@@ -21,8 +21,13 @@ AT_TODO_HEADER_STYLE = (
 )
 
 # Style for to-do details window done button
-AT_DONE_BTN_STYLE = (
+AT_DONE_CTA_BTN_STYLE = (
     'w-[15%] h-[40px] !bg-[#1555d9] text-white text-medium rounded-md '
+    'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
+)
+
+AT_DONE_DELETE_BTN_STYLE = (
+    'w-[15%] h-[40px] !bg-[#FF0000] text-white text-medium rounded-md '
     'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
 )
 

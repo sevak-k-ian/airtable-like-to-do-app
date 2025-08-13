@@ -1,7 +1,5 @@
 ############# TODO LIST
-# 0) Check if github works
 # Logic / interactoins
-# 1) Create a "delete todo" button in every template focus window
 # 2) Clicking that button must delete from DB the aimed todo and refresh the list view
 
 # Design / Esthetic
@@ -191,7 +189,8 @@ def show_list_view(property_to_use_to_group: str):
             build_filter_bar_save_choices(active_filters)
             # new-todo
             todo_creation_dialog_box = build_create_todo_dialog()  # The creation dialog will be invisible until opened.
-            ui.button('New To-Do', icon='add', on_click=todo_creation_dialog_box.open).props('color=primary')
+            ui.button('New To-Do', icon='add', on_click=todo_creation_dialog_box.open).classes(
+                "bg-white rounded text-blue font-bold")
 
         # The grouped list of todos
         with ui.column().classes("w-full"):
@@ -237,7 +236,7 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                 "borderless")
 
             # Generates adequate CTA btn depending on edit or create usecase
-            def define_btn_type() -> ui.button:
+            def build_cta_btn() -> ui.button:
                 """Dynamically creates and returns either an 'Edit' or 'Create' button.
                     Returns: ui.button
                 """
@@ -253,7 +252,7 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                                                       comments=comment_editor_property.value),
                         ui.notify("✅ Todo edited!"),
                         refresh_list_view(property_to_use_to_group="source"))).classes(
-                        style.AT_DONE_BTN_STYLE).props('no-caps')
+                        style.AT_DONE_CTA_BTN_STYLE).props('no-caps')
                     return generic_btn
 
                 elif usage_type == "create":
@@ -267,13 +266,32 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                                              created_time=created_time_label.text,
                                              comments=comment_editor_property.value),
                         refresh_list_view(property_to_use_to_group="source")
-                    )).classes(style.AT_DONE_BTN_STYLE).props('no-caps')
+                    )).classes(style.AT_DONE_CTA_BTN_STYLE).props('no-caps')
                     return generic_btn
 
                 else:
                     print("Error")
 
-            action_btn = define_btn_type()
+            # Create the CTA button
+            action_btn = build_cta_btn()
+
+            def build_delete_todo_btn() -> ui.button:
+                """Dynamically creates a "delete button" for todo in 'Edit' mode.
+                    Returns: ui.button
+                """
+                if usage_type == "edit":
+                    delete_btn = ui.button(text="Delete",
+                                           on_click=lambda: (ui.notify(message="✅ Todo deleted from database!"),
+                                                             database.delete_todo(
+                                                                 todo_id=todo_data["id"]),
+                                                             refresh_list_view(
+                                                                 property_to_use_to_group="source"),
+                                                             )).classes(
+                        style.AT_DONE_DELETE_BTN_STYLE).props('no-caps')
+                    return delete_btn
+
+            # Create the delete button
+            delete_btn_edit_mode = build_delete_todo_btn()
 
         # 1st SECTION (4 cells grid element in a row) : PRIORITY, STATUS, FIRE, SOURCE
         with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
