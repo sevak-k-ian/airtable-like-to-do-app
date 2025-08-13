@@ -1,4 +1,5 @@
 ############# TODO LIST
+# 0) Check if github works
 # Logic / interactoins
 # 1) Create a "delete todo" button in every template focus window
 # 2) Clicking that button must delete from DB the aimed todo and refresh the list view
@@ -24,10 +25,13 @@ style.GOOGLE_INTER_FONT  # Load the "Inter" font for the whole page
 ############# TITLE GLOBAL VARIABLES #############
 list_view_groups_state = set()  # Records the state of the ui.expansion() elements in grouped_list_view
 active_filters = {}  # Stores user's selections when selecting filters in the grouped_list_view
+list_view_container = None  # Contains the grouped_list_view layout built with show_list_view()
+
+############# TITLE LAYOUT FUNCTIONS #############
+pass
 
 
-############# TITLE CLI FUNCTIONS #############
-
+# ABOUT THE LIST VIEW AND ITS ELEMENTS
 def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
     """Reorganizes a flat list of to-dos into a dictionary of groups.
         Details :
@@ -43,11 +47,6 @@ def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> d
     return grouped
 
 
-############# TITLE LAYOUT FUNCTIONS #############
-pass
-
-
-# ABOUT THE LIST VIEW AND ITS ELEMENTS
 def build_grouped_list_view(database_todos_list: list, property_used_for_grouping: str):
     """Creates an Airtable-like grouped list view.
         Headers (= grouping_property) can expand and show rows (= todos under the group)
@@ -149,8 +148,8 @@ def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Di
 
     # The button that will anchor the menu
     with ui.button() \
-            .props('flat no-caps padding="4px 8px"') \
-            .classes('bg-white hover:bg-gray-100 rounded-full shadow-sm border border-gray-300') as button:
+            .props('flat no-caps padding="4px 14px"') \
+            .classes('bg-white hover:bg-gray-100 rounded-full shadow-sm border border-gray-300 font-bold') as button:
 
         # The menu is now defined INSIDE the button's context
         with ui.menu():
@@ -170,7 +169,7 @@ def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Di
 def build_filter_bar_save_choices(filters: dict):
     """Creates a horizontal bar of filter dropdowns."""
     with ui.row().classes('items-center gap-2 p-2'):
-        ui.label('Filter by:').classes('text-gray-500')
+        ui.label('Filter by:').classes('px-4 font-semibold text-white text-base')
         build_filter_dropdown_btn_element('Status', STATUS_OPTIONS, filters)
         build_filter_dropdown_btn_element('Priority', PRIORITY_OPTIONS, filters)
         build_filter_dropdown_btn_element('Source', SOURCE_OPTIONS, filters)
@@ -187,7 +186,7 @@ def show_list_view(property_to_use_to_group: str):
 
     with list_view_container:
         # Build the filter bar & "new todo" header
-        with ui.row().classes('w-full justify-between items-center p-4 border-b'):
+        with ui.row().classes('w-full justify-between items-center p-4 border-b bg-[#32BEFF]'):
             # filter bar
             build_filter_bar_save_choices(active_filters)
             # new-todo
@@ -361,7 +360,6 @@ def build_create_todo_dialog() -> ui.dialog:
         "created_time": f"{NOW_FR_DATE}",
         "comments": ""
     }
-
     with ui.dialog().props("full-width full-height") as todo_creation_dialog:
         build_todo_window_shared_layout(todo_data=empty_todo_dict, usage_type="create")
         return todo_creation_dialog
@@ -390,8 +388,6 @@ def open_todo_details(todo: dict):
 
 ############# TITLE MAIN LAYOUT LOGIC #############
 pass
-
-list_view_container = None
 
 with ui.column().classes("w-full h-screen") as main_container:
     # Assign the created element to your global variable
