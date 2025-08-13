@@ -1,9 +1,6 @@
 ############# TODO LIST
-# Logic / interactoins
-# 2) Make the filtering work
-
-# Design / Esthetic
-# 3) In todo list view, for todo-row change position of Fire icon, place it as a prefix of the todo row
+# Logic / interactions
+# 1) Make the filtering work
 
 
 ############# TITLE LIBRARIES AND MODULES #############
@@ -60,9 +57,11 @@ def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Di
     filters[name.lower()] = []
 
     # The button that will anchor the menu
+    airtable_shadow = 'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
     with ui.button() \
-            .props('flat no-caps padding="4px 14px"') \
-            .classes('bg-white hover:bg-gray-100 rounded-full shadow-sm border border-gray-300 font-bold') as button:
+            .props('flat no-caps') \
+            .classes(
+        f'bg-white hover:bg-gray-100 rounded-md text-zinc-900 text-[13px] {airtable_shadow} mr-2 px-[6px] py-[4px]') as button:
 
         # The menu is now defined INSIDE the button's context
         with ui.menu():
@@ -74,15 +73,16 @@ def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Di
                     lambda: (button.update(), ui.notify(f'{active_filters_notification_msg(active_filters)}')))
 
         # The button's visual content (label and icon)
-        with ui.row().classes('items-center gap-1'):
-            ui.label().bind_text_from(filters, name.lower(), backward=get_button_text)
-            ui.icon('expand_more', size='sm')
+        with ui.row().classes('items-center gap-2 no-wrap'):
+            ui.label().bind_text_from(filters, name.lower(), backward=get_button_text).classes(
+                "truncate text-black font-light text-lg")
+            ui.icon('expand_more', size='sm').classes("text-black font-thin")
 
 
 def build_filter_bar_save_choices(filters: dict):
     """Creates a horizontal bar of filter dropdowns."""
     with ui.row().classes('items-center gap-2 p-2'):
-        ui.label('Filter by:').classes('px-4 font-semibold text-white text-base')
+        # ui.label('Filter by').classes('px-4 font-semibold text-white text-base')
         build_filter_dropdown_btn_element('Status', STATUS_OPTIONS, filters)
         build_filter_dropdown_btn_element('Priority', PRIORITY_OPTIONS, filters)
         build_filter_dropdown_btn_element('Source', SOURCE_OPTIONS, filters)
@@ -154,11 +154,9 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
 
                 # Loop through each todo in the current group (and its todos list)
                 for todo in list_of_todos:
-
                     # A row = a single to-do item
                     with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-base').on(
                             'click', lambda t=todo: open_todo_details(t)):
-
                         # Fire icon
                         fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
                         ui.label(text=f"{fire_icon_to_display}").classes('w-12 text-center text-xl')
@@ -200,13 +198,13 @@ def show_list_view(property_to_use_to_group: str):
 
     with list_view_container:
         # Build the filter bar & "new todo" header
-        with ui.row().classes('w-full justify-between items-center p-4 border-b bg-[#32BEFF]'):
+        with ui.row().classes('w-full justify-between items-center p-4 border-b bg-white'):
             # filter bar
             build_filter_bar_save_choices(active_filters)
             # new-todo
             todo_creation_dialog_box = build_create_todo_dialog()  # The creation dialog will be invisible until opened.
-            ui.button('New To-Do', icon='add', on_click=todo_creation_dialog_box.open).classes(
-                "bg-white rounded text-blue font-bold")
+            ui.button('Create new todo',  on_click=todo_creation_dialog_box.open).classes(
+                "bg-black rounded text-white font-semibold px-4 py-2 text-lg").props("no-caps")
 
         # The grouped list of todos
         with ui.column().classes("w-full"):
