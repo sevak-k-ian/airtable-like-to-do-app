@@ -1,10 +1,9 @@
 ############# TODO LIST
 # Logic / interactoins
-# 2) Clicking that button must delete from DB the aimed todo and refresh the list view
+# 2) Make the filtering work
 
 # Design / Esthetic
 # 1) Add an highlight color behind the status' name, or group-name in list view (to copy airtable styling)
-# 2) Change/improve ui.label('Here is my list of priority : "Deadline", "Fire", "Priority", "Status"')
 # 3) In todo list view, for todo-row change position of Fire icon, place it as a prefix of the todo row
 
 
@@ -30,89 +29,6 @@ pass
 
 
 # ABOUT THE LIST VIEW AND ITS ELEMENTS
-def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
-    """Reorganizes a flat list of to-dos into a dictionary of groups.
-        Details :
-        1. defaultdict(list) creates an empty dict that can be filled with key-list_value
-        2. for every todo (loop), if needed, a new key is created that corresponds to the provided grouping_property
-        (if the grouping_property already exists as a key inside grouped dict, then go step 3.)
-        3. it sticks the todo (dict) inside the value-list linked to the correct key/grouping_property
-        4. returns a dict (key = grouping_property) of list of dicts [todos]
-    """
-    grouped = defaultdict(list)
-    for todo in todos_list:
-        grouped[todo[f"{grouping_property}"]].append(todo)
-    return grouped
-
-
-def build_grouped_list_view(database_todos_list: list, property_used_for_grouping: str):
-    """Creates an Airtable-like grouped list view.
-        Headers (= grouping_property) can expand and show rows (= todos under the group)
-    """
-    # This set() variable will save which group.s are expanded (or not) in order to find back our list view
-    # as it was once we leave a to-do single window we
-    global list_view_groups_state
-
-    def update_groups_state(group_name: str):
-        """Adds or removes the group name from the list_view_groups_state set().
-            This function will be triggered every time there is a change occuring on the header of any group
-            thanks to .on('update:model-value',...) at the end of build_grouped_list_view function
-        """
-        if group_name in list_view_groups_state:
-            list_view_groups_state.discard(group_name)
-        elif group_name not in list_view_groups_state:
-            list_view_groups_state.add(group_name)
-
-    # Creates a dict where keys are str (=grouping_property) and values are list of todos-dict
-    grouped_todos = group_todos_by_property(todos_list=database_todos_list,
-                                            grouping_property=property_used_for_grouping)
-    # Loop through each group
-    for group_header_name, list_of_todos in grouped_todos.items():
-
-        # Check if group name is inside my list_view_groups_state set
-        is_group_expanded = True if group_header_name in list_view_groups_state else False
-
-        # Create a collapsible header for the group
-        with ui.expansion(f'{group_header_name} ({len(list_of_todos)} items)',
-                          value=is_group_expanded).props("switch-toggle-side").classes(
-            'w-full') as group_header:
-            ui.label('Here is my list of priority : "Deadline", "Fire", "Priority", "Status"')
-            # This column holds all the todos for this group
-            with ui.column().classes('w-full gap-0'):
-                # Loop through each todo in the current group (and its todos list)
-                for todo in list_of_todos:
-                    # A row = a single to-do item
-                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer').on(
-                            'click', lambda t=todo: open_todo_details(t)):
-                        # To-do name (takes up all available space)
-                        ui.label(todo['todo_name']).classes('flex-grow')
-
-                        # Status pill
-                        status = todo["status"]
-                        ui.label(status).classes(
-                            f'w-28 text-center text-sm p-1 rounded-full {style.STATUS_COLORS.get(status, "bg-gray-200")}')
-
-                        # Fire icon
-                        fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
-                        ui.label(text=f"{fire_icon_to_display}").classes('w-12 text-center text-xl')
-
-                        # Priority pill
-                        priority = todo["priority"]
-                        ui.label(priority).classes(
-                            f'w-24 text-center text-sm p-1 rounded-full {style.PRIORITY_COLORS.get(priority, "bg-gray-200")}')
-
-                        # Deadline
-                        deadline = todo["deadline"]
-                        ui.label(deadline).classes('w-32 text-right')
-
-                    ui.separator()
-
-        # .on() method is used to listen for an event (like a mouse click or a key press) on a UI element
-        # then it runs a function when that event happens.
-        # 'update:model-value' tracks any changes of any type occurring on my UI element
-        group_header.on('update:model-value',
-                        lambda name=group_header_name: update_groups_state(group_name=name))
-
 
 def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Dict):
     """Creates an Airtable-style filter button with its own menu."""
@@ -171,6 +87,101 @@ def build_filter_bar_save_choices(filters: dict):
         build_filter_dropdown_btn_element('Status', STATUS_OPTIONS, filters)
         build_filter_dropdown_btn_element('Priority', PRIORITY_OPTIONS, filters)
         build_filter_dropdown_btn_element('Source', SOURCE_OPTIONS, filters)
+        build_filter_dropdown_btn_element('Fire', FIRE_OPTIONS, filters)
+
+
+def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
+    """Reorganizes a flat list of to-dos into a dictionary of groups.
+        Details :
+        1. defaultdict(list) creates an empty dict that can be filled with key-list_value
+        2. for every todo (loop), if needed, a new key is created that corresponds to the provided grouping_property
+        (if the grouping_property already exists as a key inside grouped dict, then go step 3.)
+        3. it sticks the todo (dict) inside the value-list linked to the correct key/grouping_property
+        4. returns a dict (key = grouping_property) of list of dicts [todos]
+    """
+    grouped = defaultdict(list)
+    for todo in todos_list:
+        grouped[todo[f"{grouping_property}"]].append(todo)
+    return grouped
+
+
+def build_grouped_list_view(database_todos_list: list, property_used_for_grouping: str):
+    """Creates an Airtable-like grouped list view.
+        Headers (= grouping_property) can expand and show rows (= todos under the group)
+    """
+    # This set() variable will save which group.s are expanded (or not) in order to find back our list view
+    # as it was once we leave a to-do single window we
+    global list_view_groups_state
+
+    def update_groups_state(group_name: str):
+        """Adds or removes the group name from the list_view_groups_state set().
+            This function will be triggered every time there is a change occuring on the header of any group
+            thanks to .on('update:model-value',...) at the end of build_grouped_list_view function
+        """
+        if group_name in list_view_groups_state:
+            list_view_groups_state.discard(group_name)
+        elif group_name not in list_view_groups_state:
+            list_view_groups_state.add(group_name)
+
+    # Creates a dict where keys are str (=grouping_property) and values are list of todos-dict
+    grouped_todos = group_todos_by_property(todos_list=database_todos_list,
+                                            grouping_property=property_used_for_grouping)
+    # Loop through each group
+    for group_header_name, list_of_todos in grouped_todos.items():
+
+        # Check if group name is inside my list_view_groups_state set
+        is_group_expanded = True if group_header_name in list_view_groups_state else False
+
+        # Create a collapsible header for the group
+        with ui.expansion(f'{group_header_name} ({len(list_of_todos)} items)',
+                          value=is_group_expanded).props("switch-toggle-side").classes(
+            'w-full text-lg') as group_header:
+
+            # This column holds all the todos for this group
+            with ui.column().classes('w-full gap-0'):
+                # Mini header row on top of the todos inside the group
+                with ui.row().classes('w-full p-3 items-center text-sm text-gray-500 font-normal'):
+                    # This empty label acts as a spacer to align with the to-do names, by takink all the available space
+                    ui.label().classes('flex-grow')
+                    # Add labels for each column, matching the widths of the data below
+                    ui.label('Status').classes('w-28 text-center')
+                    ui.label('Fire').classes('w-12 text-center')
+                    ui.label('Priority').classes('w-24 text-center')
+                    ui.label('Deadline').classes('w-32 text-center')
+
+                # Loop through each todo in the current group (and its todos list)
+                for todo in list_of_todos:
+                    # A row = a single to-do item
+                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-base').on(
+                            'click', lambda t=todo: open_todo_details(t)):
+                        # To-do name (takes up all available space)
+                        ui.label(todo['todo_name']).classes('flex-grow')
+
+                        # Status pill
+                        status = todo["status"]
+                        ui.label(status).classes(
+                            f'w-28 text-center text-sm p-1 rounded-full {style.STATUS_COLORS.get(status, "bg-gray-200")}')
+
+                        # Fire icon
+                        fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
+                        ui.label(text=f"{fire_icon_to_display}").classes('w-12 text-center text-xl')
+
+                        # Priority pill
+                        priority = todo["priority"]
+                        ui.label(priority).classes(
+                            f'w-24 text-center text-sm p-1 rounded-full {style.PRIORITY_COLORS.get(priority, "bg-gray-200")}')
+
+                        # Deadline
+                        deadline = todo["deadline"]
+                        ui.label(deadline).classes('w-32 text-center')
+
+                    ui.separator()
+
+        # .on() method is used to listen for an event (like a mouse click or a key press) on a UI element
+        # then it runs a function when that event happens.
+        # 'update:model-value' tracks any changes of any type occurring on my UI element
+        group_header.on('update:model-value',
+                        lambda name=group_header_name: update_groups_state(group_name=name))
 
 
 def show_list_view(property_to_use_to_group: str):
