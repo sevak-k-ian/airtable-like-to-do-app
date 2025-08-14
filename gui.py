@@ -1,6 +1,11 @@
 ############# TODO LIST
 # Logic / interactions
+# 0) Focus on every property that does not show up correctly ou just work
+# created time → need to update everytime this variable is called because it uses the hour in which the GUI has been activated in my tab
+# modified time
+# files
 # 1) Make the filtering work
+# 2) Add a search box tool
 
 
 ############# TITLE LIBRARIES AND MODULES #############
@@ -11,7 +16,9 @@ from collections import defaultdict
 from typing import List, Dict, Callable
 import database
 import style
-from constant import NOW_FR_DATE, STATUS_OPTIONS, PRIORITY_OPTIONS, SOURCE_OPTIONS, FIRE_OPTIONS
+from constant import STATUS_OPTIONS, PRIORITY_OPTIONS, SOURCE_OPTIONS, FIRE_OPTIONS
+import datetime
+from zoneinfo import ZoneInfo
 
 style.GOOGLE_INTER_FONT  # Load the "Inter" font for the whole page
 
@@ -24,8 +31,21 @@ list_view_container = None  # Contains the grouped_list_view layout built with s
 pass
 
 
-# ABOUT THE LIST VIEW AND ITS ELEMENTS
+# MISCELLANEOUS FUNCTIONS
+@ui.refreshable
+def get_fresh_fr_date_with_time() -> str:
+    # 1. Get the current time in UTC (as you did)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    # 2. Convert it to the French timezone (Europe/Paris)
+    french_timezone = ZoneInfo("Europe/Paris")
+    now_french = now_utc.astimezone(french_timezone)
+    # 3. Format the result into your desired string format
+    formatted_fr_date_time = now_french.strftime("%d/%m/%Y %H:%M")
+    print(f"time refreshed : {formatted_fr_date_time}")
+    return formatted_fr_date_time
 
+
+# ABOUT THE LIST VIEW AND ITS ELEMENTS
 def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Dict):
     """Creates an Airtable-style filter button with its own menu."""
 
@@ -155,7 +175,7 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
                 # Loop through each todo in the current group (and its todos list)
                 for todo in list_of_todos:
                     # A row = a single to-do item
-                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-base').on(
+                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-lg').on(
                             'click', lambda t=todo: open_todo_details(t)):
                         # Fire icon
                         fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
@@ -203,7 +223,7 @@ def show_list_view(property_to_use_to_group: str):
             build_filter_bar_save_choices(active_filters)
             # new-todo
             todo_creation_dialog_box = build_create_todo_dialog()  # The creation dialog will be invisible until opened.
-            ui.button('Create new todo',  on_click=todo_creation_dialog_box.open).classes(
+            ui.button('Create new todo', on_click=todo_creation_dialog_box.open).classes(
                 "bg-black rounded text-white font-semibold px-4 py-2 text-lg").props("no-caps")
 
         # The grouped list of todos
@@ -351,8 +371,24 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                 # 2/3 : creation date
                 with ui.column():
                     ui.label("Created on").classes(style.AT_TODO_PROPERTIES_HEADING)
-                    created_time_label = ui.label(text="12/03/2025").classes(style.AT_DATE_LABEL_STYLE).props(
-                        'dense borderless')
+
+                    def populate_creation_date_field() -> ui.button:
+                        """Dynamically creates the creation date for todo in 'Create' mode.
+                            Returns: ui.button
+                        """
+                        if usage_type == "create":
+                            initial_created_time = ui.label(text=f"{get_fresh_fr_date_with_time()}").classes(
+                                style.AT_DATE_LABEL_STYLE).props(
+                                'dense borderless')
+                            return initial_created_time
+                        elif usage_type == "edit":
+                            created_time_from_database = ui.label(text=f"{todo_data["created_time"]}").classes(
+                                style.AT_DATE_LABEL_STYLE).props(
+                                'dense borderless')
+                            return created_time_from_database
+
+                    created_time_label = populate_creation_date_field()
+
                 # 2/3 : last modified time
                 with ui.column():
                     ui.label("Modified on").classes(
@@ -389,7 +425,7 @@ def build_create_todo_dialog() -> ui.dialog:
         "source": "🔒 Perso",
         "deadline": "",
         "modified_time": "",
-        "created_time": f"{NOW_FR_DATE}",
+        "created_time": f"{get_fresh_fr_date_with_time()}",
         "comments": ""
     }
     with ui.dialog().props("full-width full-height") as todo_creation_dialog:
