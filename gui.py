@@ -1,9 +1,7 @@
 ############# TODO LIST
 # Logic / interactions
 # 0) Focus on every property that does not show up correctly ou just work
-# created time → need to update everytime this variable is called because it uses the hour in which the GUI has been activated in my tab
-# modified time
-# files
+    # files
 # 1) Make the filtering work
 # 2) Add a search box tool
 
@@ -281,7 +279,8 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                                                       priority=priority_dropdown_selector.value,
                                                       fire_or_clock=fire_dropdown_selector.value,
                                                       source=source_dropdown_selector.value,
-                                                      deadline=date.value, modified_time=modified_time_label.text,
+                                                      deadline=date.value,
+                                                      modified_time=f"{get_fresh_fr_date_with_time()}",
                                                       created_time=created_time_label.text,
                                                       comments=comment_editor_property.value),
                         ui.notify("✅ Todo edited!"),
@@ -368,6 +367,7 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                                     ui.button('Close', on_click=menu.close).props('flat')
                         with date.add_slot('append'):
                             ui.icon('edit_calendar').on('click', menu.open).classes('cursor-pointer')
+
                 # 2/3 : creation date
                 with ui.column():
                     ui.label("Created on").classes(style.AT_TODO_PROPERTIES_HEADING)
@@ -393,7 +393,8 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                 with ui.column():
                     ui.label("Modified on").classes(
                         style.AT_TODO_PROPERTIES_HEADING)
-                    modified_time_label = ui.label(text="28/05/2025").classes(style.AT_DATE_LABEL_STYLE).props(
+                    modified_time_label = ui.label(text=f"{todo_data["modified_time"]}").classes(
+                        style.AT_DATE_LABEL_STYLE).props(
                         'dense borderless')
 
         # 3rd SECTION (2 cols in a row) : COMMENTS & FILE ATTACHMENTS
