@@ -196,7 +196,7 @@ def save_uploaded_file(e: UploadEventArguments):
 
 
 # ----GROUPED LIST PAGE AND ITS ELEMENTS----
-def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Dict):
+def build_filter_button(name: str, options: List[str], filters: Dict):
     """Creates an Airtable-style filter button with its own menu."""
 
     def get_button_text(selections: List[str]) -> str:
@@ -249,14 +249,14 @@ def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Di
             ui.icon('expand_more', size='sm').classes("text-black font-thin")
 
 
-def build_filter_bar_save_choices(filters: dict):
+def build_filter_bar(filters: dict):
     """Creates a horizontal bar of filter dropdowns."""
     with ui.row().classes('items-center gap-2 p-2'):
         # ui.label('Filter by').classes('px-4 font-semibold text-white text-base')
-        build_filter_dropdown_btn_element('Status', STATUS_OPTIONS, filters)
-        build_filter_dropdown_btn_element('Priority', PRIORITY_OPTIONS, filters)
-        build_filter_dropdown_btn_element('Source', SOURCE_OPTIONS, filters)
-        build_filter_dropdown_btn_element('Fire', FIRE_OPTIONS, filters)
+        build_filter_button('Status', STATUS_OPTIONS, filters)
+        build_filter_button('Priority', PRIORITY_OPTIONS, filters)
+        build_filter_button('Source', SOURCE_OPTIONS, filters)
+        build_filter_button('Fire', FIRE_OPTIONS, filters)
 
 
 def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
@@ -296,10 +296,10 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
     grouped_todos = group_todos_by_property(todos_list=database_todos_list,
                                             grouping_property=property_used_for_grouping)
     # Loop through each group
-    for group_header_name, list_of_todos in grouped_todos.items():
+    for group_name, todos_in_group in grouped_todos.items():
 
         # Check if group name is inside my list_view_groups_state set
-        is_group_expanded = True if group_header_name in list_view_groups_state else False
+        is_group_expanded = True if group_name in list_view_groups_state else False
 
         # Create a collapsible header for the group
         with ui.expansion(
@@ -308,8 +308,8 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
             # Customize visually the header of the group with add_slot
             with group_header.add_slot("header"):
                 with ui.row().classes("items-center"):
-                    ui.label(f'{group_header_name}').classes("bg-gray-200 rounded px-2 py-1")
-                    ui.label(f'{len(list_of_todos)}').classes("ml-1 text-gray-500")
+                    ui.label(f'{group_name}').classes("bg-gray-200 rounded px-2 py-1")
+                    ui.label(f'{len(todos_in_group)}').classes("ml-1 text-gray-500")
 
             # This column holds all the todos of the group
             with ui.column().classes('w-full gap-0'):
@@ -323,7 +323,7 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
                     ui.label('Deadline').classes('w-32 text-center')
 
                 # Loop through each todo in the current group (and its todos list)
-                for todo in list_of_todos:
+                for todo in todos_in_group:
                     # A row = a single to-do item
                     with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-lg').on(
                             'click', lambda t=todo: open_todo_details(t)):
@@ -354,7 +354,7 @@ def build_grouped_list_view(database_todos_list: list, property_used_for_groupin
         # then it runs a function when that event happens.
         # 'update:model-value' tracks any changes of any type occurring on my UI element
         group_header.on('update:model-value',
-                        lambda name=group_header_name: update_groups_state(group_name=name))
+                        lambda name=group_name: update_groups_state(group_name=name))
 
 
 def show_list_view(property_to_use_to_group: str):
@@ -370,7 +370,7 @@ def show_list_view(property_to_use_to_group: str):
         # Build the filter bar & "new todo" header
         with ui.row().classes('w-full justify-between items-center p-4 border-b bg-white'):
             # filter bar
-            build_filter_bar_save_choices(active_filters)
+            build_filter_bar(active_filters)
             # new-todo
             todo_creation_dialog_box = build_create_todo_dialog()  # The creation dialog will be invisible until opened.
             ui.button('Create new todo', on_click=todo_creation_dialog_box.open).classes(
@@ -393,7 +393,7 @@ def refresh_list_view(property_to_use_to_group: str):
 
 
 # ----SINGLE TO-DO WINDOW AND ITS ELEMENTS----
-def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.column:
+def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
     """Builds the shared UI form for creating or editing a to-do item.
 
         This function acts as a reusable component that generates the entire layout
@@ -584,14 +584,14 @@ def build_create_todo_dialog() -> ui.dialog:
         "comments": ""
     }
     with ui.dialog().props("full-width full-height") as todo_creation_dialog:
-        build_todo_window_shared_layout(todo_data=empty_todo_dict, usage_type="create")
+        build_todo_view(todo_data=empty_todo_dict, usage_type="create")
         return todo_creation_dialog
 
 
-def build_todos_details_dialog(todo_to_display: dict) -> ui.dialog:
+def build_details_dialog(todo_to_display: dict) -> ui.dialog:
     """Builds the 'Todo details" dialog window with its content."""
     with ui.dialog().props("full-width full-height") as todo_details_dialog:
-        build_todo_window_shared_layout(todo_data=todo_to_display, usage_type="edit")
+        build_todo_view(todo_data=todo_to_display, usage_type="edit")
         return todo_details_dialog
 
 
@@ -600,12 +600,12 @@ def open_todo_details(todo: dict):
 
         This function is triggered when a to-do item is clicked, cf. build_grouped_list_view() function.
         It takes a to-do's data, passes it to a builder function to construct
-        the details dialog (build_todos_details_dialog), and then opens the dialog on the screen.
+        the details dialog (build_details_dialog), and then opens the dialog on the screen.
 
         Args:
             todo: A dictionary containing the data for the selected to-do.
         """
-    todo_details_dialog = build_todos_details_dialog(todo_to_display=todo)
+    todo_details_dialog = build_details_dialog(todo_to_display=todo)
     todo_details_dialog.open()
 
 
