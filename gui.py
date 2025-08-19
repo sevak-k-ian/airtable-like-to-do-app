@@ -8,14 +8,14 @@
 # 3) Add a sort functionnality
 # 3) Add an other "grouping" complex function to group with desired source
 
-from nicegui.events import UploadEventArguments
 
 ############# TITLE LIBRARIES AND MODULES #############
 pass
 
-from nicegui import app, ui, events
+from nicegui import ui, events
+from nicegui.events import UploadEventArguments
 from collections import defaultdict  # To create an empty dict that can be filled with [keys]-[list_values]
-from typing import List, Dict, Callable
+from typing import List, Dict, Optional
 import database  # My file that manages sql queries
 import style  # My file that manages some specific redundant styling used in gui
 from constant import STATUS_OPTIONS, PRIORITY_OPTIONS, SOURCE_OPTIONS, FIRE_OPTIONS
@@ -31,65 +31,88 @@ style.GOOGLE_INTER_FONT  # Load the "Inter" font for the whole page
 list_view_groups_state = set()  # Records the state of the ui.expansion() elements in grouped_list_view
 active_filters = {}  # Stores user's selections when selecting filters in the grouped_list_view
 list_view_container = None  # Contains the grouped_list_view layout built with show_list_view()
-saved_files_parent_dir = Path("/Users/sevakkulinkian/Documents/Todo_app_saved_files")
-temporary_todo_folder_path = None
-upload_progress: dict = {"total": 0, "completed": 0}
+UPLOADS_DIR = Path("/Users/sevakkulinkian/Documents/Todo_app_saved_files")
+active_upload_dir = None  # Holds the state for the current, in-progress upload operation
+upload_progress: dict = {"total": 0,
+                         "completed": 0}  # Tracks the progress of a multi-file upload batch ('total' vs. 'completed').
 
 ############# TITLE LAYOUT FUNCTIONS #############
 pass
 
 
-# MISCELLANEOUS FUNCTIONS
+# ----MISCELLANEOUS FUNCTIONS----
 @ui.refreshable
 def get_fresh_fr_date_with_time() -> str:
-    # 1. Get the current time in UTC (as you did)
+    """Gets current time in France and formats it as a string.
+    Returns:
+        str: The current date and time in "DD/MM/YYYY HH:MM" format.
+    """
+    # Get the current time in UTC (as you did)
     now_utc = datetime.datetime.now(datetime.timezone.utc)
-    # 2. Convert it to the French timezone (Europe/Paris)
+    # Convert it to the French timezone (Europe/Paris)
     french_timezone = ZoneInfo("Europe/Paris")
     now_french = now_utc.astimezone(french_timezone)
-    # 3. Format the result into your desired string format
+    # Format the result into your desired string format
     formatted_fr_date_time = now_french.strftime("%d/%m/%Y %H:%M")
     return formatted_fr_date_time
 
 
-# FILES UPLOAD MANAGEMENT
+# ----FILES UPLOAD MANAGEMENT----
 def generate_short_id(length_desired: int) -> str:
+    """Generates a short and URL-safe random ID.
+        Args:
+            length_desired: The desired length of the generated ID string.
+        Returns:
+            A random string of the specified length containing letters and digits.
+    """
     auth_characters = string.ascii_letters + string.digits
     unique_id: str = "".join(secrets.choice(auth_characters) for _ in range(length_desired))
     return unique_id
 
 
 def format_unique_id_folder_name(current_todo_name=str, max_len: int = 85, unique_id=generate_short_id(8)) -> str:
+    """Formats a to-do name into a safe and unique directory name.
+
+        Sanitizes a given string by replacing spaces with underscores
+        and converting it to lowercase. Then truncates the name to a maximum
+        length and prepends a unique ID to prevent naming conflicts.
+
+        Args:
+            current_todo_name: The original name of the to-do.
+            max_len: The maximum length of the sanitized name part.
+            unique_id: The unique identifier to prepend to the name.
+
+        Returns:
+            A dictionary containing two formatted versions of the name:
+            - 'no_space': The sanitized and truncated name.
+            - 'unique_title': The final, unique folder name string.
+    """
     no_space_name: str = current_todo_name.replace(" ", "_").lower()
     truncated_version: str = no_space_name[:max_len]
     file_formatted_title_dict: dict = dict(no_space=no_space_name, unique_title=f"{unique_id}_{truncated_version}")
     return file_formatted_title_dict
 
 
-def todo_has_already_dir(no_space_todo_name: str) -> int:
-    """
-        Use a list comprehension to iterate and filter for directories
-    #    - parent_directory.iterdir() gets all items (files and folders)
-    #    - item.is_dir() checks if an item is a directory
-    #    - item.name gets just the name of the directory
-    :param folder_existence_to_check:
-    :return:
-    """
-    global saved_files_parent_dir
-    subfolder_names: list = [item.name for item in saved_files_parent_dir.iterdir() if item.is_dir()]
-    if any(no_space_todo_name in name for name in subfolder_names):
-        return 1
-    else:
-        return 0
+def find_todo_dir(no_space_todo_name: str) -> Optional[str]:
+    """Searches for an existing directory associated with a to-do.
 
+        This function iterates through subdirectories in the global 'UPLOADS_DIR'
+        and returns the full name of the first directory that contains the provided
+        sanitized to-do name.
 
-def find_existing_todo_folder_dir(no_space_todo_name: str) -> str:
-    global saved_files_parent_dir
+        Args:
+            no_space_todo_name: The sanitized (lowercase, no spaces) name of the
+                                to-do to search for.
+
+        Returns:
+            The full name of the matching folder if found, otherwise None.
+    """
+    global UPLOADS_DIR
     # Create list of all current folders that are inside main_folder
-    subfolder_names: list = [item.name for item in saved_files_parent_dir.iterdir() if item.is_dir()]
+    subfolder_names: list = [item.name for item in UPLOADS_DIR.iterdir() if item.is_dir()]
     # Loop through all items in the parent directory
     for folder_name in subfolder_names:
-        # Check if the item is a directory AND if it contains our to-do name
+        # Check if the item contains our to-do name
         if no_space_todo_name in folder_name:
             # If we find a match, return its name immediately
             return folder_name
@@ -97,64 +120,82 @@ def find_existing_todo_folder_dir(no_space_todo_name: str) -> str:
     return None
 
 
-def save_files_to_dir(e: UploadEventArguments, dir_to_save_in: str):
-    with open(f"{dir_to_save_in}/{e.name.replace(" ", "_")}", "wb") as file:
-        file.write(e.content.read())
+def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: dict) -> Path:
+    """Handles the file 'added' event to prepare a directory for an upload batch.
 
+       This function is triggered once when a user selects one or more files in a
+       ui.upload element. It checks if a directory for the associated to-do already
+       exists. If not, it creates a new unique directory. It also resets the
+       global upload progress counter.
 
-def save_num_files_in_upload(e):
-    number_of_files = len(e.args)
-    return number_of_files
+       Finally, it stores and returns the absolute path of the target directory
+       for the subsequent 'on_upload' events to use.
 
+       Args:
+           e: The event arguments from the 'added' event, containing the list of files.
+           clicked_todo: The dictionary of the to-do item to which files are being added.
 
-def handle_on_added_event_ui_upload(e, clicked_todo: dict) -> str:
-    global saved_files_parent_dir, temporary_todo_folder_path, upload_progress
-    # Check is a folder attached to that todo already exists
+       Returns:
+           A pathlib.Path object representing the absolute path to the target
+           directory for the upload batch.
+       """
+    global UPLOADS_DIR, active_upload_dir, upload_progress
     clicked_todo_name: str = clicked_todo["todo_name"]
     no_space_formatted_name: str = format_unique_id_folder_name(current_todo_name=clicked_todo_name)["no_space"]
+    # Reset the global scope counter every time a batch of files is placed into the ui.upload element
     upload_progress["total"] = len(e.args)
     upload_progress["completed"] = 0
-    print(upload_progress)
-    # Look for an existing folder attached to that todo, and returns folder's name if one exists
-    folder_attached_to_todo: str = find_existing_todo_folder_dir(no_space_todo_name=no_space_formatted_name)
+    # Look for an existing folder attached to that todo, and returns str folder's name if one exists, else returns None
+    folder_attached_to_todo: str = find_todo_dir(no_space_todo_name=no_space_formatted_name)
 
-    if not folder_attached_to_todo:  # if no folder found, creates new one
+    # If no folder attached to the clicked todo has been found, creates a new one, formatted the correct way
+    if not folder_attached_to_todo:
         unique_folder_name: str = format_unique_id_folder_name(current_todo_name=clicked_todo["todo_name"])[
             "unique_title"]
-        new_folder_abs_path = Path(f"{saved_files_parent_dir}/{unique_folder_name}")
-        new_folder_abs_path.mkdir()
-        print(f"Just created folder : '{new_folder_abs_path}'")
-        temporary_todo_folder_path = new_folder_abs_path
-        print(f"temporary_todo_folder_path = {temporary_todo_folder_path}")
-        return temporary_todo_folder_path
-
-    else:  # if a folder attached to that todo already exists, returns its abs path
-        existing_folder_abs_path: str = Path(f"{saved_files_parent_dir}/{folder_attached_to_todo}")
-        print(f"Found existing folder : '{existing_folder_abs_path}'")
-        temporary_todo_folder_path = existing_folder_abs_path
-        print(f"temporary_todo_folder_path = {temporary_todo_folder_path}")
-        return temporary_todo_folder_path
+        new_folder_abs_path = Path(f"{UPLOADS_DIR}/{unique_folder_name}")
+        new_folder_abs_path.mkdir() # Creates the folder
+        active_upload_dir = new_folder_abs_path # Stores target directory's abs path for next 'on_upload' events to use
+        return active_upload_dir
+    # If a folder attached to that todo already exists, returns its abs path
+    else:
+        existing_folder_abs_path: str = Path(f"{UPLOADS_DIR}/{folder_attached_to_todo}")
+        active_upload_dir = existing_folder_abs_path # Stores target directory's abs path for next 'on_upload' events to use
+        return active_upload_dir
 
 
-def handle_on_upload_event_ui_upload(e: UploadEventArguments):
-    global temporary_todo_folder_path, upload_progress
+def save_uploaded_file(e: UploadEventArguments):
+    """Handles the upload of a single file as part of a batch.
 
-    # Save the ONE file this handler received.
-    file_abs_path: str = f"{temporary_todo_folder_path}/{e.name.replace(" ", "_")}"
+        This function is triggered by the 'on_upload' event for each file. It saves
+        the received file to a pre-determined directory (stored in a global variable),
+        increments a global progress counter, and checks if all files in the
+        current batch have been successfully uploaded.
+
+        If X files are uploaded, then this function will be triggered X times until end.
+
+        Args:
+            e: The event arguments from the 'on_upload' event, containing the
+               name and content of the single uploaded file.
+    """
+    global active_upload_dir, upload_progress
+
+    # Save ONE file at a time
+    file_abs_path: str = f"{active_upload_dir}/{e.name.replace(" ", "_")}"
     with open(file_abs_path, "wb") as f:
         f.write(e.content.read())
     print(f"Just saved locally '{file_abs_path}")
 
-    # Increment the counter
+    # Increment the global scope counter (that was reset by previous prepare_upload_destination function)
     upload_progress["completed"] += 1
 
-    # Check if the batch is now complete
+    # Check if the batch is now complete to stop the process by a final closing step triggered if only condition is met
+    # (eg : print and database update)
     if upload_progress["total"] == upload_progress["completed"]:
         print("All files have been uploaded!")
         # TODO Here I can update my database to store the abs_path of my todo_folder or any other best practice with SQLite
 
 
-# ABOUT THE LIST VIEW AND ITS ELEMENTS
+# ----GROUPED LIST PAGE AND ITS ELEMENTS----
 def build_filter_dropdown_btn_element(name: str, options: List[str], filters: Dict):
     """Creates an Airtable-style filter button with its own menu."""
 
@@ -351,7 +392,7 @@ def refresh_list_view(property_to_use_to_group: str):
     show_list_view(property_to_use_to_group=property_to_use_to_group)
 
 
-# ABOUT SINGLE TO-DO WINDOW AND ITS ELEMENTS
+# ----SINGLE TO-DO WINDOW AND ITS ELEMENTS----
 def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.column:
     """Builds the shared UI form for creating or editing a to-do item.
 
@@ -510,9 +551,6 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
                         'dense borderless')
 
         # 3rd SECTION (2 cols in a row) : COMMENTS & FILE ATTACHMENTS
-        # TODO it is created before I click on "upload" button, problematic for the moment
-        # dir_linked_to_todo_clicked: str = create_dir_for_todo_files_upload(todo_data["todo_name"])
-
         with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
             # 1/2 : comments section
             with ui.column().classes('w-[75%]'):
@@ -522,8 +560,8 @@ def build_todo_window_shared_layout(todo_data: dict, usage_type: str) -> ui.colu
             with ui.column().classes('w-[25%]'):
                 ui.label("Attachments").classes(style.AT_TODO_PROPERTIES_HEADING)
                 ui.upload(
-                    on_upload=lambda e: handle_on_upload_event_ui_upload(e), multiple=True).on(
-                    "added", lambda e: handle_on_added_event_ui_upload(e, clicked_todo=todo_data)).classes(
+                    on_upload=lambda e: save_uploaded_file(e), multiple=True).on(
+                    "added", lambda e: prepare_upload_destination(e, clicked_todo=todo_data)).classes(
                     style.AT_UPLOAD_ZONE_STYLE).props(
                     'dense borderless')
 
@@ -581,5 +619,5 @@ with ui.column().classes("w-full h-screen") as main_container:
     # Build the initial list view inside that list_view_container
     show_list_view(property_to_use_to_group="source")
 
-# Testing
+# ----APP RUNNING----
 ui.run(language='fr')
