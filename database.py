@@ -41,7 +41,7 @@ def init_db():
 init_db()
 
 
-def get_all_todos():
+def get_all_todos() -> list[dict]:
     """Retrieves all todos from the database"""
     with sqlite3.connect("todos.db") as connection:
         connection.row_factory = sqlite3.Row  # This makes rows behave like dictionaries
@@ -53,7 +53,7 @@ def get_all_todos():
         return cursor.fetchall()
 
 
-def get_todo_by_id(todo_id: int):
+def get_todo_by_id(todo_id: int) -> dict:
     """Retrieves one todo from the database by its ID"""
     with sqlite3.connect("todos.db") as connection:
         connection.row_factory = sqlite3.Row  # This makes rows behave like dictionaries
