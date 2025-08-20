@@ -122,7 +122,6 @@ def find_todo_dir(no_space_todo_name: str) -> Optional[str]:
 
 def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: dict) -> Path:
     """Handles the file 'added' event to prepare a directory for an upload batch.
-
        Use only for "Edit" mode.
 
        This function is triggered once when a user selects one or more files in a ui.upload element. It checks if
@@ -137,8 +136,7 @@ def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: di
            clicked_todo: The dictionary of the to-do item to which files are being added.
 
        Returns:
-           A pathlib.Path object representing the absolute path to the target
-           directory for the upload batch.
+           A pathlib.Path object representing the absolute path to the target directory for the upload batch.
        """
     global UPLOADS_DIR, active_upload_dir, upload_progress
     clicked_todo_name: str = clicked_todo["todo_name"]
@@ -166,7 +164,6 @@ def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: di
 
 def save_uploaded_file(e: UploadEventArguments):
     """Handles the upload of a single file as part of a batch.
-
         Use only for "Edit" mode.
 
         This function is triggered by the 'on_upload' event for each file. It saves the received file to a pre-determined
@@ -176,8 +173,7 @@ def save_uploaded_file(e: UploadEventArguments):
         If X files are uploaded, then this function will be triggered X times until end.
 
         Args:
-            e: The event arguments from the 'on_upload' event, containing the
-               name and content of the single uploaded file.
+            e: The event arguments from the 'on_upload' event, containing the name and content of the single uploaded file.
     """
     global active_upload_dir, upload_progress
 
@@ -199,17 +195,14 @@ def save_uploaded_file(e: UploadEventArguments):
 def save_upload_batch_data(e: UploadEventArguments):
     """
         Collects individual file data into a temporary list for a new to-do that are stored as dict inside the list.
-
         Use only for "Create" mode.
 
-        This function is used as the 'on_upload' handler in "create" mode. It is
-        called for each successfully uploaded file, where it extracts the file's
-        content and name, and appends them to the global 'upload_batch_data'
-        list for processing later when the "Create" button is clicked.
+        This function is used as the 'on_upload' handler in "create" mode. It is called for each successfully uploaded
+        file, where it extracts the file's content and name, and appends them to the global 'upload_batch_data' list for
+        processing later when the "Create" button is clicked.
 
         Args:
-            e: The event arguments for a single file upload, containing its
-               name and content.
+            e: The event arguments for a single file upload, containing its name and content.
     """
     global upload_batch_data
     file_data: dict = {"file_content": e.content, "file_name": e.name, "file_formatted_name": e.name.replace(" ", "_")}
@@ -219,19 +212,15 @@ def save_upload_batch_data(e: UploadEventArguments):
 def handle_upload_files_create_mode(files_data_list: list, created_todo_name: str):
     """
         Creates a new directory and saves a batch of uploaded files into it.
-
         Use only for "Create" mode.
 
-        This function is called after a new to-do has been named. It generates a
-        unique folder name based on the to-do's name, creates the corresponding
-        directory, and then iterates through a list of pre-collected file data
+        This function is called after a new to-do has been named. It generates a unique folder name based on the
+        to-do's name, creates the corresponding directory, and then iterates through a list of pre-collected file data
         to save each file to the new directory.
 
         Args:
-            files_data_list: A list of dictionaries, where each dictionary
-                             contains the content and name of a file to be saved.
-            created_todo_name: The final name of the new to-do, used to
-                               generate the directory name.
+            files_data_list: A list of dictionaries, where each dictionary contains the content and name of a file to be saved.
+            created_todo_name: The final name of the new to-do, used to generate the directory name.
     """
     global UPLOADS_DIR
     new_folder_name: str = format_unique_id_folder_name(current_todo_name=created_todo_name)["unique_title"]
@@ -532,7 +521,7 @@ def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
                     return delete_btn
 
             # Create the delete button
-            delete_btn_edit_mode = build_delete_todo_btn()
+            build_delete_todo_btn()
 
         # 1st SECTION (4 cells grid element in a row) : PRIORITY, STATUS, FIRE, SOURCE
         with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
@@ -568,7 +557,7 @@ def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
                 # 1/3 : deadline
                 with ui.column():
                     ui.label("Deadline").classes(style.AT_TODO_PROPERTIES_HEADING)
-                    with ui.input().props("dense borderless").classes(style.AT_PROPERTY_SELECTOR_STYLE) as date:
+                    with ui.input(value=todo_data["deadline"]).props("dense borderless").classes(style.AT_PROPERTY_SELECTOR_STYLE) as date:
                         with ui.menu().props('no-parent-event') as menu:
                             with ui.date().bind_value(date).props('mask="DD/MM/YYYY"'):
                                 with ui.row().classes('justify-end'):
