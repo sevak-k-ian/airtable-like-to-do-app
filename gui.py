@@ -129,6 +129,11 @@ def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: di
     upload_progress["total"] = len(e.args)
     upload_progress["completed"] = 0
 
+# Function : when files "added" on todo, check if attachement_dir is NULL.
+#   If NULL create a dir and reference it to database.
+#         return
+#   If not NULL, break.
+
 
 def save_uploaded_file(e: UploadEventArguments):
     """Handles the upload of a single file as part of a batch.
@@ -178,7 +183,7 @@ def save_upload_batch_data(e: UploadEventArguments):
     upload_batch_data.append(file_data)
 
 
-# TODO Add comments inside that functino
+# TODO Add NEW comments inside that function
 def handle_upload_files_create_mode(files_data_list: list, created_todo_name: str):
     """
         Creates a new directory and saves a batch of uploaded files into it.
@@ -192,15 +197,28 @@ def handle_upload_files_create_mode(files_data_list: list, created_todo_name: st
             files_data_list: A list of dictionaries, where each dictionary contains the content and name of a file to be saved.
             created_todo_name: The final name of the new to-do, used to generate the directory name.
     """
-    global RELATIVE_DIR, LOCAL_MAIN_DIR
-    uploads_dir = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}")
+    global RELATIVE_DIR, LOCAL_MAIN_DIR, upload_progress, upload_batch_data
     new_folder_name: str = format_unique_id_folder_name(current_todo_name=created_todo_name)["unique_title"]
-    folder_abs_path: Path = Path(f"{uploads_dir}/{new_folder_name}")
-    folder_abs_path.mkdir()
-    for file_data in files_data_list:
-        file_abs_path: str = f"{folder_abs_path}/{file_data["file_formatted_name"]}"
-        with open(file_abs_path, "wb") as f:
-            f.write(file_data["file_content"].read())
+    folder_abs_path: Path = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}/{new_folder_name}")
+    upload_progress["total"] = len(files_data_list)
+
+    if len(files_data_list) > 0 :
+        folder_abs_path.mkdir()
+        for file_data in files_data_list:
+            file_abs_path: str = f"{folder_abs_path}/{file_data["file_formatted_name"]}"
+            with open(file_abs_path, "wb") as f:
+                f.write(file_data["file_content"].read())
+
+            # Increment the global scope counter (that was reset by previous prepare_upload_destination function)
+            upload_progress["completed"] += 1
+
+            # Check if the batch is now complete to stop the process by a final closing step triggered if only condition is met
+            # (eg : print and database update)
+            if upload_progress["total"] == upload_progress["completed"]:
+                upload_batch_data = []
+                upload_progress["completed"] = 0
+                upload_progress["total"] = 0
+                print("All files have been uploaded!")
 
 
 # ----GROUPED LIST PAGE AND ITS ELEMENTS----
