@@ -92,6 +92,7 @@ def format_unique_id_folder_name(current_todo_name=str, max_len: int = 85, uniqu
     return file_formatted_title_dict
 
 
+# ----FILES MANAGEMENT "EDIT MODE“----
 def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: dict):
     """Prepares the destination directory for a batch of file uploads.
         Use only for "Edit" mode.
@@ -129,11 +130,6 @@ def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: di
     upload_progress["total"] = len(e.args)
     upload_progress["completed"] = 0
 
-# Function : when files "added" on todo, check if attachement_dir is NULL.
-#   If NULL create a dir and reference it to database.
-#         return
-#   If not NULL, break.
-
 
 def save_uploaded_file(e: UploadEventArguments):
     """Handles the upload of a single file as part of a batch.
@@ -164,8 +160,7 @@ def save_uploaded_file(e: UploadEventArguments):
         print("All files have been uploaded!")
 
 
-# "CREATE MODE" file management
-# TODO Add comments inside that functino
+# ----FILES MANAGEMENT "CREATE MODE“----
 def save_upload_batch_data(e: UploadEventArguments):
     """
         Collects individual file data into a temporary list for a new to-do that are stored as dict inside the list.
@@ -183,8 +178,7 @@ def save_upload_batch_data(e: UploadEventArguments):
     upload_batch_data.append(file_data)
 
 
-# TODO Add NEW comments inside that function
-def handle_upload_files_create_mode(files_data_list: list, created_todo_name: str):
+def handle_upload_files(files_data_list: list, created_todo_name: str):
     """
         Creates a new directory and saves a batch of uploaded files into it.
         Use only for "Create" mode.
@@ -198,12 +192,13 @@ def handle_upload_files_create_mode(files_data_list: list, created_todo_name: st
             created_todo_name: The final name of the new to-do, used to generate the directory name.
     """
     global RELATIVE_DIR, LOCAL_MAIN_DIR, upload_progress, upload_batch_data
+    # Defining the variables that may be used if files have been uploaded at todo creation moment
     new_folder_name: str = format_unique_id_folder_name(current_todo_name=created_todo_name)["unique_title"]
     folder_abs_path: Path = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}/{new_folder_name}")
-    upload_progress["total"] = len(files_data_list)
+    upload_progress["total"] = len(files_data_list)  # = 0 if no files have been uploaded at todo creation moment
 
-    if len(files_data_list) > 0 :
-        folder_abs_path.mkdir()
+    if len(files_data_list) > 0:  # i.e. only if files have been uploaded at creation moment
+        folder_abs_path.mkdir()  # create the folder
         for file_data in files_data_list:
             file_abs_path: str = f"{folder_abs_path}/{file_data["file_formatted_name"]}"
             with open(file_abs_path, "wb") as f:
@@ -215,10 +210,11 @@ def handle_upload_files_create_mode(files_data_list: list, created_todo_name: st
             # Check if the batch is now complete to stop the process by a final closing step triggered if only condition is met
             # (eg : print and database update)
             if upload_progress["total"] == upload_progress["completed"]:
+                print("All files have been uploaded!")
+                # Reset the global scope variables for good functioning in case new todo with files is created
                 upload_batch_data = []
                 upload_progress["completed"] = 0
                 upload_progress["total"] = 0
-                print("All files have been uploaded!")
 
 
 # ----GROUPED LIST PAGE AND ITS ELEMENTS----
@@ -418,7 +414,6 @@ def refresh_list_view(property_to_use_to_group: str):
 
 
 # ----SINGLE TO-DO WINDOW AND ITS ELEMENTS----
-
 
 def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
     """Builds the shared UI form for creating or editing a to-do item.
