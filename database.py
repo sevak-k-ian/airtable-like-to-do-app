@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 
 # DB 10 COLUMNS ARE :
-# ['id', 'todo_name', 'status', 'priority', 'fire_or_clock', 'source', 'deadline', 'modified_time', 'created_time', 'comments', 'files']
+# ['id', 'todo_name', 'status', 'priority', 'fire_or_clock', 'source', 'deadline', 'modified_time', 'created_time', 'comments', 'attachment_dir']
 
 
 def init_db():
@@ -30,7 +30,8 @@ def init_db():
                 deadline TEXT, 
                 modified_time TEXT,
                 created_time TEXT, 
-                comments TEXT)
+                comments TEXT,
+                attachment_dir TEXT)
         '''
 
         cursor.execute(query)
@@ -39,6 +40,31 @@ def init_db():
 
 # Call this once at the start of  app to ensure the DB and table exist.
 init_db()
+
+
+def migrate_db():
+    """Adds the 'attachment_dir' column to the 'todos' table if it doesn't exist."""
+    db_file = "todos.db"
+    with sqlite3.connect(db_file) as conn:
+        cursor = conn.cursor()
+
+        # Get the list of columns in the table
+        cursor.execute("PRAGMA table_info(todos)")
+        columns = [column[1] for column in cursor.fetchall()]
+
+        # Check if your new column is missing
+        if "attachment_dir" not in columns:
+            print("Updating table 'todos': Adding column 'attachment_dir'...")
+            # If it's missing, add it
+            cursor.execute("ALTER TABLE todos ADD COLUMN attachment_dir TEXT")
+            conn.commit()
+            print("Table updated successfully.")
+        else:
+            print("Column 'attachment_dir' already exists.")
+
+
+# You would run this function once to update your database
+# migrate_db()
 
 
 def get_all_todos() -> list[dict]:
@@ -66,20 +92,21 @@ def get_todo_by_id(todo_id: int) -> dict:
 
 
 def create_todo(todo_name: str, status: str, priority: str, fire_or_clock: str, source: str, deadline: str,
-                modified_time: str, created_time: str, comments: str):
+                modified_time: str, created_time: str, comments: str, attachment_dir: str):
     """Adds a new todo inside the todos table"""
     with sqlite3.connect("todos.db") as connection:
         cursor = connection.cursor()
 
-        query: str = "INSERT INTO todos (todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        query: str = "INSERT INTO todos (todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments, attachment_dir) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         cursor.execute(query, (
-            todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments))
+            todo_name, status, priority, fire_or_clock, source, deadline, modified_time, created_time, comments,
+            attachment_dir))
         connection.commit()
 
 
 def update_todo_entirely(todo_id: int, todo_name: str, status: str, priority: str, fire_or_clock: str, source: str,
                          deadline: str,
-                         modified_time: str, created_time: str, comments: str):
+                         modified_time: str, attachment_dir: str, comments: str):
     """
         Updates an entire to-do record in the database based on its ID.
         Note: created_time is passed but not used, as it should not be changed.
@@ -97,7 +124,8 @@ def update_todo_entirely(todo_id: int, todo_name: str, status: str, priority: st
                     source = ?,
                     deadline = ?,
                     comments = ?,
-                    modified_time = ?
+                    modified_time = ?,
+                    attachment_dir = ?
                 WHERE
                     id = ?
             """
@@ -113,6 +141,7 @@ def update_todo_entirely(todo_id: int, todo_name: str, status: str, priority: st
             deadline,
             comments,
             modified_time,
+            attachment_dir,
             todo_id  # This corresponds to the final '?' in the WHERE clause.
         )
 
@@ -122,7 +151,8 @@ def update_todo_entirely(todo_id: int, todo_name: str, status: str, priority: st
 
 def update_one_column(todo_id: int, column_to_update: str, new_status):
     """Update a single property for a given todo"""
-    allowed_columns: list = ["todo_name", "status", "priority", "fire_or_clock", "source", "deadline", "comments"]
+    allowed_columns: list = ["todo_name", "status", "priority", "fire_or_clock", "source", "deadline", "comments",
+                             "attachment_dir"]
 
     if column_to_update not in allowed_columns:
         print(f"{column_to_update} is not a column of the database")

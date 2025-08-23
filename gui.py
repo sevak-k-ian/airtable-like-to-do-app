@@ -1,12 +1,8 @@
-############# TODO LIST
-# Logic / interactions
-# Write full comments and docstrings for my FILE MANAGEMENT functions
-
-# Others
-# 1) Make the filtering work
-# 2) Add a search box tool
-# 3) Add a sort functionnality
-# 3) Add an other "grouping" complex function to group with desired source
+############# TODOS LIST
+# TODO 1) Make the filtering work
+# TODO 2) Add a search box tool
+# TODO 3) Add a sort functionality
+# TODO 3) Add an other "grouping" complex function to group with desired source
 
 
 ############# TITLE LIBRARIES AND MODULES #############
@@ -31,8 +27,10 @@ style.GOOGLE_INTER_FONT  # Load the "Inter" font for the whole page
 list_view_groups_state = set()  # Records the state of the ui.expansion() elements in grouped_list_view
 active_filters = {}  # Stores user's selections when selecting filters in the grouped_list_view
 list_view_container = None  # Contains the grouped_list_view layout built with build_list_page()
-UPLOADS_DIR = Path("/Users/sevakkulinkian/Documents/Todo_app_saved_files")
+RELATIVE_DIR = Path("Documents/Todo_app_saved_files")
+LOCAL_MAIN_DIR = Path("/Users/sevakkulinkian")
 active_upload_dir = None  # Holds the state for the current, in-progress upload operation
+active_folder_name = None  # Holds the active todo's folder name
 upload_progress: dict = {"total": 0,
                          "completed": 0}  # Tracks the progress of a multi-file upload batch ('total' vs. 'completed').
 upload_batch_data: list = []
@@ -94,72 +92,42 @@ def format_unique_id_folder_name(current_todo_name=str, max_len: int = 85, uniqu
     return file_formatted_title_dict
 
 
-def find_todo_dir(no_space_todo_name: str) -> Optional[str]:
-    """Searches for an existing directory associated with a to-do.
+def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: dict):
+    """Prepares the destination directory for a batch of file uploads.
+        Use only for "Edit" mode.
 
-        This function iterates through subdirectories in the global 'UPLOADS_DIR' and returns the full name of the first
-        directory that contains the provided sanitized to-do name.
+        This function is triggered by the 'added' event on a ui.upload element.
+        It checks if the given to-do already has an attachment directory stored in the
+        database. If it does, it uses that directory. If not, it creates a new
+        unique directory for the to-do's files.
+
+        It also resets the global upload progress counter for the new batch.
 
         Args:
-            no_space_todo_name: The sanitized (lowercase, no spaces) name of the
-                                to-do to search for.
+            e: The event arguments from the 'added' event.
+            clicked_todo: The dictionary of the to-do item receiving the files.
 
-        Returns:
-            The full name of the matching folder if found, otherwise None.
-    """
-    global UPLOADS_DIR
-    # Create list of all current folders that are inside main_folder
-    subfolder_names: list = [item.name for item in UPLOADS_DIR.iterdir() if item.is_dir()]
-    # Loop through all items in the parent directory
-    for folder_name in subfolder_names:
-        # Check if the item contains our to-do name
-        if no_space_todo_name in folder_name:
-            # If we find a match, return its name immediately
-            return folder_name
-    # If the loop finishes without finding any match, return None
-    return None
+        Returns: nothing
+        """
+    global RELATIVE_DIR, LOCAL_MAIN_DIR, active_upload_dir, active_folder_name, upload_progress
 
+    # Check existence of todo folder name in my DB
+    if clicked_todo["attachment_dir"] is not None:  # If folder name exists in DB
+        abs_path: Path = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}/{clicked_todo["attachment_dir"]}")
+        # Stores target dir's data to global scope to use it inside next 'on_upload' events function
+        active_upload_dir = abs_path
+        active_folder_name = clicked_todo["attachment_dir"]
+    if clicked_todo["attachment_dir"] is None:  # If no folder name found in DB
+        todo_folder_name = format_unique_id_folder_name(clicked_todo["todo_name"])["unique_title"]
+        abs_path: Path = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}/{todo_folder_name}")
+        abs_path.mkdir()  # Creates the folder
+        # Stores target dir's data to global scope to use it inside next 'on_upload' events function
+        active_upload_dir = abs_path
+        active_folder_name = todo_folder_name
 
-def prepare_upload_destination(e: events.GenericEventArguments, clicked_todo: dict) -> Path:
-    """Handles the file 'added' event to prepare a directory for an upload batch.
-       Use only for "Edit" mode.
-
-       This function is triggered once when a user selects one or more files in a ui.upload element. It checks if
-       a directory for the associated to-do already exists. If not, it creates a new unique directory. It also resets the
-       global upload progress counter.
-
-       Finally, it stores and returns the absolute path of the target directory
-       for the subsequent 'on_upload' events to use.
-
-       Args:
-           e: The event arguments from the 'added' event, containing the list of files.
-           clicked_todo: The dictionary of the to-do item to which files are being added.
-
-       Returns:
-           A pathlib.Path object representing the absolute path to the target directory for the upload batch.
-       """
-    global UPLOADS_DIR, active_upload_dir, upload_progress
-    clicked_todo_name: str = clicked_todo["todo_name"]
-    no_space_formatted_name: str = format_unique_id_folder_name(current_todo_name=clicked_todo_name)["no_space"]
     # Reset the global scope counter every time a batch of files is placed into the ui.upload element
     upload_progress["total"] = len(e.args)
     upload_progress["completed"] = 0
-    # Look for an existing folder attached to that todo, and returns str folder's name if one exists, else returns None
-    folder_attached_to_todo: str = find_todo_dir(no_space_todo_name=no_space_formatted_name)
-
-    # If no folder attached to the clicked todo has been found, creates a new one, formatted the correct way
-    if not folder_attached_to_todo:
-        unique_folder_name: str = format_unique_id_folder_name(current_todo_name=clicked_todo["todo_name"])[
-            "unique_title"]
-        new_folder_abs_path = Path(f"{UPLOADS_DIR}/{unique_folder_name}")
-        new_folder_abs_path.mkdir()  # Creates the folder
-        active_upload_dir = new_folder_abs_path  # Stores target directory's abs path for next 'on_upload' events to use
-        return active_upload_dir
-    # If a folder attached to that todo already exists, returns its abs path
-    else:
-        existing_folder_abs_path: str = Path(f"{UPLOADS_DIR}/{folder_attached_to_todo}")
-        active_upload_dir = existing_folder_abs_path  # Stores target directory's abs path for next 'on_upload' events to use
-        return active_upload_dir
 
 
 def save_uploaded_file(e: UploadEventArguments):
@@ -189,9 +157,10 @@ def save_uploaded_file(e: UploadEventArguments):
     # (eg : print and database update)
     if upload_progress["total"] == upload_progress["completed"]:
         print("All files have been uploaded!")
-        # TODO Here I can update my database to store the abs_path of my todo_folder or any other best practice with SQLite
 
 
+# "CREATE MODE" file management
+# TODO Add comments inside that functino
 def save_upload_batch_data(e: UploadEventArguments):
     """
         Collects individual file data into a temporary list for a new to-do that are stored as dict inside the list.
@@ -209,6 +178,7 @@ def save_upload_batch_data(e: UploadEventArguments):
     upload_batch_data.append(file_data)
 
 
+# TODO Add comments inside that functino
 def handle_upload_files_create_mode(files_data_list: list, created_todo_name: str):
     """
         Creates a new directory and saves a batch of uploaded files into it.
@@ -222,9 +192,10 @@ def handle_upload_files_create_mode(files_data_list: list, created_todo_name: st
             files_data_list: A list of dictionaries, where each dictionary contains the content and name of a file to be saved.
             created_todo_name: The final name of the new to-do, used to generate the directory name.
     """
-    global UPLOADS_DIR
+    global RELATIVE_DIR, LOCAL_MAIN_DIR
+    uploads_dir = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}")
     new_folder_name: str = format_unique_id_folder_name(current_todo_name=created_todo_name)["unique_title"]
-    folder_abs_path: Path = Path(f"{UPLOADS_DIR}/{new_folder_name}")
+    folder_abs_path: Path = Path(f"{uploads_dir}/{new_folder_name}")
     folder_abs_path.mkdir()
     for file_data in files_data_list:
         file_abs_path: str = f"{folder_abs_path}/{file_data["file_formatted_name"]}"
@@ -268,7 +239,7 @@ def build_filter_button(name: str, options: List[str], filters: Dict):
     with ui.button() \
             .props('flat no-caps') \
             .classes(
-        f'bg-white hover:bg-gray-100 rounded-md text-zinc-900 text-[13px] {airtable_shadow} mr-2 px-[6px] py-[4px]') as button:
+        f'bg-white hover:bg-gray-100 rounded-md text-zinc-900 text-xs {airtable_shadow} mr-2 px-[6px] py-[4px]') as button:
 
         # The menu is now defined INSIDE the button's context
         with ui.menu():
@@ -283,13 +254,12 @@ def build_filter_button(name: str, options: List[str], filters: Dict):
         with ui.row().classes('items-center gap-2 no-wrap'):
             ui.label().bind_text_from(filters, name.lower(), backward=get_button_text).classes(
                 "truncate text-black font-light text-lg")
-            ui.icon('expand_more', size='sm').classes("text-black font-thin")
+            ui.icon('expand_more', size='sm').classes("text-black font-light")
 
 
 def build_filter_bar(filters: dict):
     """Creates a horizontal bar of filter dropdowns."""
     with ui.row().classes('items-center gap-2 p-2'):
-        # ui.label('Filter by').classes('px-4 font-semibold text-white text-base')
         build_filter_button('Status', STATUS_OPTIONS, filters)
         build_filter_button('Priority', PRIORITY_OPTIONS, filters)
         build_filter_button('Source', SOURCE_OPTIONS, filters)
@@ -341,7 +311,7 @@ def build_grouped_list(database_todos_list: list, property_used_for_grouping: st
         # Create a collapsible header for the group
         with ui.expansion(
                 value=is_group_expanded).props("switch-toggle-side").classes(
-            'w-full text-lg') as group_header:
+            'w-full text-base') as group_header:
             # Customize visually the header of the group with add_slot
             with group_header.add_slot("header"):
                 with ui.row().classes("items-center"):
@@ -351,7 +321,7 @@ def build_grouped_list(database_todos_list: list, property_used_for_grouping: st
             # This column holds all the todos of the group
             with ui.column().classes('w-full gap-0'):
                 # Mini header row on top of the todos inside the group
-                with ui.row().classes('w-full px-2 py-0 items-center text-sm text-gray-500 font-normal'):
+                with ui.row().classes('w-full px-2 py-0 items-center text-xs text-gray-500 font-normal'):
                     # This empty label acts as a spacer to align with the to-do names, by taking all the available space
                     ui.label().classes('flex-grow')
                     # Add labels for each column, matching the widths of the data below
@@ -362,7 +332,7 @@ def build_grouped_list(database_todos_list: list, property_used_for_grouping: st
                 # Loop through each todo in the current group (and its todos list)
                 for todo in todos_in_group:
                     # A row = a single to-do item
-                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-lg').on(
+                    with ui.row().classes('w-full p-3 items-center hover:bg-gray-50 cursor-pointer text-base').on(
                             'click', lambda t=todo: open_todo_details(t)):
                         # Fire icon
                         fire_icon_to_display: str = "" if todo["fire_or_clock"] == None else todo["fire_or_clock"]
@@ -431,10 +401,8 @@ def refresh_list_view(property_to_use_to_group: str):
 
 # ----SINGLE TO-DO WINDOW AND ITS ELEMENTS----
 
-# TODO Fix the "deadline" problem thanks to Gemini answer
 
-
-def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
+def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
     """Builds the shared UI form for creating or editing a to-do item.
 
         This function acts as a reusable component that generates the entire layout
@@ -475,8 +443,9 @@ def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
                                                       source=source_dropdown_selector.value,
                                                       deadline=date.value,
                                                       modified_time=f"{get_fresh_fr_date_with_time()}",
-                                                      created_time=created_time_label.text,
-                                                      comments=comment_editor_property.value),
+                                                      # created_time=created_time_label.text,
+                                                      comments=comment_editor_property.value,
+                                                      attachment_dir=active_folder_name),
                         ui.notify("✅ Todo edited!"),
                         refresh_list_view(property_to_use_to_group="source"))).classes(
                         style.AT_DONE_CTA_BTN_STYLE).props('no-caps')
@@ -491,7 +460,7 @@ def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
                                              source=source_dropdown_selector.value,
                                              deadline=date.value, modified_time=modified_time_label.text,
                                              created_time=created_time_label.text,
-                                             comments=comment_editor_property.value),
+                                             comments=comment_editor_property.value, attachment_dir=None),
                         handle_upload_files_create_mode(files_data_list=upload_batch_data,
                                                         created_todo_name=todo_name.value),
                         refresh_list_view(property_to_use_to_group="source")
@@ -504,7 +473,7 @@ def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
             # Create the CTA button
             build_cta_btn()
 
-            # TODO add feature to delete also the directory and files attached to the todo
+            # TODO Add feature to be able to delete directory + files when todo is deleted
             def build_delete_todo_btn() -> ui.button:
                 """Dynamically creates a "delete button" for todo in 'Edit' mode.
                     Returns: ui.button
@@ -557,7 +526,8 @@ def build_todo_view(todo_data: dict, usage_type: str) -> ui.column:
                 # 1/3 : deadline
                 with ui.column():
                     ui.label("Deadline").classes(style.AT_TODO_PROPERTIES_HEADING)
-                    with ui.input(value=todo_data["deadline"]).props("dense borderless").classes(style.AT_PROPERTY_SELECTOR_STYLE) as date:
+                    with ui.input(value=todo_data["deadline"]).props("dense borderless").classes(
+                            style.AT_PROPERTY_SELECTOR_STYLE) as date:
                         with ui.menu().props('no-parent-event') as menu:
                             with ui.date().bind_value(date).props('mask="DD/MM/YYYY"'):
                                 with ui.row().classes('justify-end'):
@@ -637,14 +607,14 @@ def build_create_todo_dialog() -> ui.dialog:
         "comments": ""
     }
     with ui.dialog().props("full-width full-height") as todo_creation_dialog:
-        build_todo_view(todo_data=empty_todo_dict, usage_type="create")
+        build_todo_item(todo_data=empty_todo_dict, usage_type="create")
         return todo_creation_dialog
 
 
 def build_details_dialog(todo_to_display: dict) -> ui.dialog:
     """Builds the 'Todo details" dialog window with its content."""
     with ui.dialog().props("full-width full-height") as todo_details_dialog:
-        build_todo_view(todo_data=todo_to_display, usage_type="edit")
+        build_todo_item(todo_data=todo_to_display, usage_type="edit")
         return todo_details_dialog
 
 
