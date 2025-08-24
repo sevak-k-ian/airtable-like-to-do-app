@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 import secrets
 import string
+from shutil import rmtree
 
 style.GOOGLE_INTER_FONT  # Load the "Inter" font for the whole page
 
@@ -158,6 +159,29 @@ def save_uploaded_file(e: UploadEventArguments):
     # (eg : print and database update)
     if upload_progress["total"] == upload_progress["completed"]:
         print("All files have been uploaded!")
+
+
+def delete_folder_and_files(todo_folder_name: str):
+    """Recursively deletes a folder and all its contents.
+
+        This function is used to remove the attachment directory associated with a
+        to-do. It first checks if the directory exists before attempting to delete
+        it to prevent errors.
+
+        Args:
+            todo_folder_name: The name of the specific to-do folder to delete.
+    """
+    global LOCAL_MAIN_DIR, RELATIVE_DIR
+    # Build folder's path
+    folder_abs_path: Path = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}/{todo_folder_name}")
+    print(folder_abs_path)
+    # Check if dir still exists
+    if Path(folder_abs_path).is_dir():
+        print("Path is dir")
+        rmtree(folder_abs_path)  # Delete folder and its contents
+        ui.notify(f"🗑️ Deleted folder '{todo_folder_name}'")
+    else:
+        print("Dir does NOT exist. Nothing deleted.")
 
 
 # ----FILES MANAGEMENT "CREATE MODE“----
@@ -415,6 +439,8 @@ def refresh_list_view(property_to_use_to_group: str):
 
 # ----SINGLE TO-DO WINDOW AND ITS ELEMENTS----
 
+# TODO Feature to show in "text" (editable) field the attachment_dir field + a list of files contained inside.
+# TODO Complexify this feature in order to be able to delete individual files from this window
 def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
     """Builds the shared UI form for creating or editing a to-do item.
 
@@ -474,8 +500,8 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                                              deadline=date.value, modified_time=modified_time_label.text,
                                              created_time=created_time_label.text,
                                              comments=comment_editor_property.value, attachment_dir=None),
-                        handle_upload_files_create_mode(files_data_list=upload_batch_data,
-                                                        created_todo_name=todo_name.value),
+                        handle_upload_files(files_data_list=upload_batch_data,
+                                            created_todo_name=todo_name.value),
                         refresh_list_view(property_to_use_to_group="source")
                     )).classes(style.AT_DONE_CTA_BTN_STYLE).props('no-caps')
                     return generic_btn
@@ -486,7 +512,6 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
             # Create the CTA button
             build_cta_btn()
 
-            # TODO Add feature to be able to delete directory + files when todo is deleted
             def build_delete_todo_btn() -> ui.button:
                 """Dynamically creates a "delete button" for todo in 'Edit' mode.
                     Returns: ui.button
@@ -494,6 +519,8 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                 if usage_type == "edit":
                     delete_btn = ui.button(text="Delete",
                                            on_click=lambda: (ui.notify(message="✅ Todo deleted from database!"),
+                                                             delete_folder_and_files(
+                                                                 todo_folder_name=todo_data["attachment_dir"]),
                                                              database.delete_todo(
                                                                  todo_id=todo_data["id"]),
                                                              refresh_list_view(
