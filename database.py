@@ -1,5 +1,6 @@
 import sqlite3
 import datetime
+from typing import Optional
 # Get current time to generate realistic timestamps
 from zoneinfo import ZoneInfo
 
@@ -164,7 +165,30 @@ def update_one_column(todo_id: int, column_to_update: str, new_status):
         query: str = f"UPDATE todos SET {column_to_update} = ? WHERE id = ?"
         cursor.execute(query, (new_status, todo_id))
         connection.commit()
+    print(f"Updated column {column_to_update} for todo N°{todo_id}")
 
+
+def find_todo_id_via_name(todo_name: str) -> Optional[int]:
+    """Finds the ID of a to-do by its exact name.
+
+    Args:
+        todo_name: The name of the to-do to search for.
+
+    Returns:
+        The integer ID of the to-do if found, otherwise None.
+    """
+    with sqlite3.connect("todos.db") as connection:
+        cursor = connection.cursor()
+
+        query: str = "SELECT id FROM todos WHERE todo_name = ?"
+        cursor.execute(query, (todo_name,))
+
+        result = cursor.fetchone()  # Fetches the first matching row
+
+        if result:
+            return result[0]  # The ID is the first element in the result tuple
+        else:
+            return None
 
 def delete_todo(todo_id: int):
     """Delete a specific todo"""

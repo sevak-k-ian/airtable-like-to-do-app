@@ -1,10 +1,3 @@
-############# TODOS LIST
-# TODO 1) Make the filtering work
-# TODO 2) Add a search box tool
-# TODO 3) Add a sort functionality
-# TODO 3) Add an other "grouping" complex function to group with desired source
-
-
 ############# TITLE LIBRARIES AND MODULES #############
 pass
 
@@ -158,7 +151,7 @@ def save_uploaded_file(e: UploadEventArguments):
     # Check if the batch is now complete to stop the process by a final closing step triggered if only condition is met
     # (eg : print and database update)
     if upload_progress["total"] == upload_progress["completed"]:
-        print("All files have been uploaded!")
+        ui.notify("🗂️ All files have been uploaded!")
 
 
 def delete_folder_and_files(todo_folder_name: str):
@@ -171,15 +164,15 @@ def delete_folder_and_files(todo_folder_name: str):
         Args:
             todo_folder_name: The name of the specific to-do folder to delete.
     """
-    global LOCAL_MAIN_DIR, RELATIVE_DIR
+    global LOCAL_MAIN_DIR, RELATIVE_DIR, active_folder_name
     # Build folder's path
     folder_abs_path: Path = Path(f"{LOCAL_MAIN_DIR}/{RELATIVE_DIR}/{todo_folder_name}")
     print(folder_abs_path)
     # Check if dir still exists
     if Path(folder_abs_path).is_dir():
-        print("Path is dir")
         rmtree(folder_abs_path)  # Delete folder and its contents
         ui.notify(f"🗑️ Deleted folder '{todo_folder_name}'")
+        active_folder_name = None
     else:
         print("Dir does NOT exist. Nothing deleted.")
 
@@ -223,6 +216,8 @@ def handle_upload_files(files_data_list: list, created_todo_name: str):
 
     if len(files_data_list) > 0:  # i.e. only if files have been uploaded at creation moment
         folder_abs_path.mkdir()  # create the folder
+        todo_id = database.find_todo_id_via_name(created_todo_name)
+        database.update_one_column(todo_id, "attachment_dir", new_folder_name)
         for file_data in files_data_list:
             file_abs_path: str = f"{folder_abs_path}/{file_data["file_formatted_name"]}"
             with open(file_abs_path, "wb") as f:
@@ -439,8 +434,6 @@ def refresh_list_view(property_to_use_to_group: str):
 
 # ----SINGLE TO-DO WINDOW AND ITS ELEMENTS----
 
-# TODO Feature to show in "text" (editable) field the attachment_dir field + a list of files contained inside.
-# TODO Complexify this feature in order to be able to delete individual files from this window
 def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
     """Builds the shared UI form for creating or editing a to-do item.
 
@@ -458,7 +451,7 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
         Returns:
             The `ui.column` element containing the entire shared layout.
         """
-    global upload_batch_data
+    global upload_batch_data, active_folder_name
     with ui.column().classes('w-full h-full bg-white p-4') as shared_one_todo_focus_layout:
 
         # HEADER SECTION (to-do name + CTA)
@@ -543,7 +536,7 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                         style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                 # 2/4 : priority
                 with ui.column():
-                    ui.label("Priorité").classes(style.AT_TODO_PROPERTIES_HEADING)
+                    ui.label("Priority").classes(style.AT_TODO_PROPERTIES_HEADING)
                     priority_dropdown_selector = ui.select(options=PRIORITY_OPTIONS,
                                                            value=todo_data["priority"]).classes(
                         style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
@@ -607,14 +600,30 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
         # 3rd SECTION (2 cols in a row) : COMMENTS & FILE ATTACHMENTS
         with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
             # 1/2 : comments section
-            with ui.column().classes('w-[75%]'):
+            with ui.column().classes('w-[70%]'):
                 ui.label("Comments").classes(style.AT_TODO_PROPERTIES_HEADING)
                 comment_editor_property = ui.editor(placeholder='Type something here').classes("w-full")
             # 2/2 : file upload section
-            with ui.column().classes('w-[25%]'):
+            with ui.column().classes('w-[30%]'):
                 ui.label("Attachments").classes(style.AT_TODO_PROPERTIES_HEADING)
                 # "Edit mode" file upload management
                 if usage_type == "edit":
+                    with ui.row().classes("w-full justify-between items-center border-2 border-[#5898d4] rounded-md"):
+                        # Display folder name stored in database
+                        folder_name = ui.label(
+                            text=f"📁 {'No folder and files' if todo_data["attachment_dir"] == None else todo_data["attachment_dir"]}").classes(
+                            "px-2")
+                        # Display a button to delete folder in database and directory
+                        ui.button(icon='delete').classes("w-10").on_click(lambda:
+                                                                          (delete_folder_and_files(
+                                                                              todo_folder_name=todo_data[
+                                                                                  "attachment_dir"]),
+                                                                           database.update_one_column(
+                                                                               todo_id=todo_data["id"],
+                                                                               column_to_update="attachment_dir",
+                                                                               new_status=None),
+                                                                           folder_name.set_text(text=""))),
+                    # Display upload zone for files. Dir is created if no folder name / path is saved in database
                     ui.upload(
                         on_upload=lambda e: save_uploaded_file(e), multiple=True).on(
                         "added", lambda e: prepare_upload_destination(e, clicked_todo=todo_data)).classes(
@@ -622,7 +631,6 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                         'dense borderless')
                 # "Create mode" file upload management
                 if usage_type == "create":
-                    ui.label("Create mode")
                     ui.upload(
                         on_upload=lambda e: save_upload_batch_data(e), multiple=True).classes(
                         style.AT_UPLOAD_ZONE_STYLE).props(

@@ -22,12 +22,12 @@ AT_TODO_HEADER_STYLE = (
 
 # Style for to-do details window done button
 AT_DONE_CTA_BTN_STYLE = (
-    'w-[15%] h-[40px] !bg-[#1555d9] text-white text-medium rounded-md '
+    'w-[15%] h-[40px] !bg-[#5898d4] text-white text-medium rounded-md '
     'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
 )
 
 AT_DONE_DELETE_BTN_STYLE = (
-    'w-[15%] h-[40px] !bg-[#FF0000] text-white text-medium rounded-md '
+    'w-[15%] h-[40px] !bg-[#F08080] text-white text-medium rounded-md '
     'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
 )
 
@@ -50,8 +50,8 @@ AT_DATE_LABEL_STYLE = (
 
 # Style for to-do details window upload type property
 AT_UPLOAD_ZONE_STYLE = (
-    'max-w-full font-inter text-zinc-900'
-    'leading-[1.5] tracking-[-0.16px] px-2 py-2 rounded-md '
+    'w-full font-inter text-zinc-900'
+    'leading-[1.5] tracking-[-0.16px]  rounded-md '
     'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
 )
 
