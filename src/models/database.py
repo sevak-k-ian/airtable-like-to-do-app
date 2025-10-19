@@ -11,10 +11,11 @@ Dependencies :
 """
 
 import sqlite3
-from typing import Optional, Union
 from contextlib import contextmanager
 import logging
 from pathlib import Path
+import datetime  # for "now"
+import pytz  # for "timezone"
 
 # ----- CONSTANT VALUES -----
 # Allowed values for different todo properties
@@ -58,7 +59,7 @@ class DatabaseManager:
     """
 
     # INIT OBJECT
-    def __init__(self, db_path: Union[str, Path], table_name: str = "todos"):
+    def __init__(self, db_path: str | Path, table_name: str = "todos"):
         """
         Initialize the DatabaseManager with a DB path and table name.
 
@@ -75,15 +76,16 @@ class DatabaseManager:
         # Validate DB path and create directory if needed
         try:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        except OSError as e:
-            raise DatabaseError(f"Cannot create DB dir: {e}")
+        except OSError as error:
+            logger.error(f"🛑Failed to create DB dir: {error}")
+            raise DatabaseError(f"Cannot create DB dir: {error}")
 
-        logger.info(f"DatabaseManager initialized with path : {self.db_path}")
+        logger.info(f"✅DatabaseManager initialized with path : {self.db_path}")
 
     # PRIVATE METHODS
     def _get_conn(self) -> sqlite3.Connection:
         """
-        Create and retun a basic SQLite connection.
+        Create and return a basic SQLite connection.
 
         Private method used internally by other DB operations.
         The connection uses default row factory (tuples).
@@ -99,9 +101,9 @@ class DatabaseManager:
             # Enable foreign key constraints (in case multiple tables exist)
             conn.execute("PRAGMA foreign_keys = ON")
             return conn  # I don’t use yield because I don’t wait for client-server side data, like for CRUD operations
-        except sqlite3.Error as e:
-            logger.error(f"Failed to connect to DB: {e}")
-            raise DatabaseError(f"DB connection failed: {e}")
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to connect to DB: {error}")
+            raise DatabaseError(f"DB connection failed: {error}")
 
     @contextmanager
     def _get_conn_dict_mode(self):
@@ -126,27 +128,28 @@ class DatabaseManager:
             conn.row_factory = sqlite3.Row  # Enable dict-like row access
             conn.execute("PRAGMA foreign_keys = ON")  # Enable foreign keys
 
-            logger.debug("DB connection established with dict mode")
+            logger.info("✅DB connection established with dict mode")
             yield conn
 
-        except sqlite3.Error as e:
+        except sqlite3.Error as error:
             # Rollback any pending transaction on error
             if conn:
                 conn.rollback()
-            logger.error(f"Database operation failed: {e}")
-            raise DatabaseError(f"Database operation failed: {e}")
+            logger.error(f"🛑Database operation failed: {error}")
+            raise DatabaseError(f"Database operation failed: {error}")
+
         finally:
             # Always close connection, even if error occured
             if conn:
                 conn.close()
-                logger.debug("DB connection closed.")
+                logger.info("✅DB connection closed.")
 
-    def _resolve_table_name(self, table_name: Optional[str]) -> str:
+    def _resolve_table_name(self, table_name: str | None) -> str:
         """
         Resolve table name to use, defaulting to instance table name if None provided.
 
         Args:
-            table_name (Optional[str]): Table name to use, or None for default
+            table_name (str | None): Table name to use, or None for default
 
         Returns:
             str: The resolved table name to use
@@ -180,7 +183,7 @@ class DatabaseManager:
         """
         return self.db_path.exists()
 
-    def initialize_new_table(self, table_name: Optional[str] = None) -> None:
+    def initialize_new_table(self, table_name: str | None = None) -> None:
         """
         Create the main todos table if it doesn't exist.
 
@@ -234,14 +237,13 @@ class DatabaseManager:
 
                 cursor.execute(query)
                 conn.commit()
+                logger.info(f"✅Table '{table_name}' initialized successfully.")
 
-                logger.info(f"Table '{table_name}' initialized successfully.")
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to initialize table '{table_name}': {error}")
+            raise DatabaseError(f"Table initialization failed: {error}")
 
-        except sqlite3.Error as e:
-            logger.error(f"Failed to initialize table '{table_name}': {e}")
-            raise DatabaseError(f"Table initialization failed: {e}")
-
-    def print_all_existing_columns(self, table_name: Optional[str] = None) -> str:
+    def print_all_existing_columns(self, table_name: str | None = None) -> str:
         """
         Print all column names in the specified table to console.
 
@@ -270,20 +272,20 @@ class DatabaseManager:
                 columns_info = cursor.fetchall()
 
                 if not columns_info:
-                    print(f"⚠️  Table '{table_name}' does not exist or has no columns")
+                    print(f"⚠️Table '{table_name}' does not exist or has no columns")
                     return
 
                 # Extract column names (index 1 in PRAGMA result)
                 cols_name = [column[1] for column in columns_info]
 
-                print(f"📋 Current existing columns in '{table_name}': {cols_name}")
-                logger.info(f"Retrieved {len(cols_name)} columns from table '{table_name}'")
+                logger.info(f"📋 Current existing columns in '{table_name}': {cols_name}")
+                logger.info(f"✅Retrieved {len(cols_name)} columns from table '{table_name}'")
 
-        except sqlite3.Error as e:
-            logger.error(f"Failed to retrieve columns from '{table_name}': {e}")
-            raise DatabaseError(f"Column retrieval failed: {e}")
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to retrieve columns from '{table_name}': {error}")
+            raise DatabaseError(f"Column retrieval failed: {error}")
 
-    def get_table_cols(self, table_name: Optional[str] = None) -> list[str]:
+    def get_table_cols(self, table_name: str | None = None) -> list[str]:
         """
         Get list of column names in the specified table.
 
@@ -307,15 +309,15 @@ class DatabaseManager:
                 cursor.execute(f"PRAGMA table_info({table_name})")
                 cols = [column[1] for column in cursor.fetchall()]
 
-                logger.info(f"Retrieved {len(cols)} cols from table {table_name}")
+                logger.info(f"✅Retrieved {len(cols)} cols from table {table_name}")
                 logger.info(f"List of cols is : {cols}")
 
                 return cols
-        except sqlite3.Error as e:
-            logger.error(f"Failed to retrieve columns from '{table_name}': {e}")
-            raise DatabaseError(f"Column retrieval failed: {e}")
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to retrieve columns from '{table_name}': {error}")
+            raise DatabaseError(f"Column retrieval failed: {error}")
 
-    def create_new_col(self, col_name: str, col_type: str, table_name: Optional[str] = None) -> None:
+    def create_new_col(self, col_name: str, col_type: str, table_name: str | None = None) -> None:
         """
         Add a new column to the specified table if it does not already exist.
 
@@ -337,9 +339,9 @@ class DatabaseManager:
         """
         # Check errors on provided (or non provided) col name and type args
         if not col_name or not col_name.strip():
-            raise ValueError("Column name connot be empty.")
+            raise ValueError("⚠️Column name connot be empty.")
         if not col_type or not col_type.strip():
-            raise ValueError("Column type cannot be empty.")
+            raise ValueError("⚠️Column type cannot be empty.")
 
         # Affects a table_name if None is provided
         if table_name is None:
@@ -361,18 +363,16 @@ class DatabaseManager:
                     # But we validate input above to prevent injection`
                     cursor.execute(f"ALTER TABLE todos ADD COLUMN {col_name} {col_type}")
                     conn.commit()
-                    print(f"✅ Column {col_name} added successfully to table '{table_name}'.")
-                    logger.info(f"Added column '{col_name}' to table '{table_name}'")
+                    logger.info(f"✅Added column '{col_name}' to table '{table_name}'")
                 else:
-                    print(f"Column {col_name} already exists in table '{table_name}'.")
-                    print(f"The existing columns are : {existing_columns}")
-                    logger.info(f"Column '{col_name} already exists - skipping creation'")
+                    logger.info(f"⚠️Column '{col_name} already exists - skipping creation'")
+                    logger.info(f"The existing columns are : {existing_columns}")
 
-        except sqlite3.Error as e:
-            logger.error(f"Failed to create column '{col_name}' in table '{table_name}': {e}")
-            raise DatabaseError(f"Column creation failed: {e}")
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to create column '{col_name}' in table '{table_name}': {error}")
+            raise DatabaseError(f"Column creation failed: {error}")
 
-    def delete_existing_col(self, col_name: str, table_name: Optional[str] = None):
+    def delete_existing_col(self, col_name: str, table_name: str | None = None):
         """
         Delete a column from the specified table if column exists.
 
@@ -394,7 +394,7 @@ class DatabaseManager:
             db_manager.delete_existing_col("deadline")
         """
         if not col_name or not col_name.strip():
-            raise ValueError("Column name cannot be empty")
+            raise ValueError("⚠️Column name cannot be empty")
 
         if table_name is None:
             table_name = self.table_name
@@ -409,27 +409,26 @@ class DatabaseManager:
 
                 # Only attempt deletion if column exists
                 if col_name in existing_columns:
-                    print(f"🚧 Found column '{col_name}' to delete in table '{table_name}'")
+                    print(f"🚧Found column '{col_name}' to delete in table '{table_name}'")
 
                     query = f"ALTER TABLE  {table_name} DROP COLUMN {col_name}"
                     cursor.execute(query)
                     conn.commit()
+                    logger.info(f"✅Deleted column '{col_name}' in table '{table_name}'")
 
-                    print(f"✅Deleted successfully column '{col_name}' in table '{table_name}'.")
-                    logger.info(f"Deleted column '{col_name}' in table '{table_name}'")
                 else:
-                    print(f"Column '{col_name}' doesn't exist in '{table_name}'. Skipped deletion.")
-                    print(f"The existing columns in table '{table_name}' are : {existing_columns}")
-                    logger.warning(
-                        f"Skipped column deletion. Column '{col_name}' doesn't exist in table '{table_name}'")
-        except sqlite3.Error as e:
+                    logger.info(
+                        f"⚠️Skipped column deletion. Column '{col_name}' doesn't exist in table '{table_name}'")
+                    logger.info(f"The existing columns in table '{table_name}' are : {existing_columns}")
+
+        except sqlite3.Error as error:
             # Handle case where SQLite version doesn't support DROP COLUMN
-            if "no such column" in str(e).lower() or "drop column" in str(e).lower:
-                logger.error(f"SQLite version may not support DROP COLUMN: {e}")
-                raise DatabaseError(f"Column deletion not supported or column doesn't exist: {e}")
+            if "no such column" in str(error).lower() or "drop column" in str(error).lower:
+                logger.error(f"🛑SQLite version may not support DROP COLUMN: {error}")
+                raise DatabaseError(f"Column deletion not supported or column doesn't exist: {error}")
             else:
-                logger.error(f"Failed to deleted column '{col_name}' in table '{table_name}': {e}")
-                raise DatabaseError(f"Column deletion failed: {e}")
+                logger.error(f"🛑Failed to deleted column '{col_name}' in table '{table_name}': {error}")
+                raise DatabaseError(f"Column deletion failed: {error}")
 
 
 class TodoDatabase(DatabaseManager):
@@ -451,7 +450,7 @@ class TodoDatabase(DatabaseManager):
     """
 
     # INIT OBJECT
-    def __init__(self, db_path: Union[str, Path] = "todos.db", table_name: str = "todos"):
+    def __init__(self, db_path: str | Path = "../../todos.db", table_name: str = "todos"):
         """
         Initialize TodoDatabase and ensure the todos table exists.
 
@@ -471,9 +470,9 @@ class TodoDatabase(DatabaseManager):
         # Automatically initialize the todos table
         try:
             self.initialize_new_table("todos")
-            logger.info(f"TodoDatabase initialized successfully with table '{self.table_name}'")
-        except DatabaseError as e:
-            logger.error(f"Failed to initialize TodoDatabase: {e}")
+            logger.info(f"✅TodoDatabase initialized successfully with table '{self.table_name}'")
+        except DatabaseError as error:
+            logger.error(f"🛑Failed to initialize TodoDatabase: {error}")
             raise
 
     def _validate_col_name(self, col_name: str) -> None:
@@ -488,7 +487,7 @@ class TodoDatabase(DatabaseManager):
         """
         # Check if string provided
         if not isinstance(col_name, str) or not col_name.strip():
-            raise ValueError("Column name must be a non-empty string.")
+            raise ValueError("⚠️Column name must be a non-empty string.")
 
         allowed_cols: list = ["todo_name", "status", "priority", "fire_or_clock", "source", "deadline", "comments",
                               "attachment_dir"]
@@ -496,7 +495,7 @@ class TodoDatabase(DatabaseManager):
         # Check if col_name provided is allowed
         if col_name not in allowed_cols:
             raise ValueError(
-                f"Col name '{col_name}' provided is not allowed. "
+                f"⚠️Col name '{col_name}' provided is not allowed. "
                 f"Allowed col names for table '{self.table_name}' are : {allowed_cols}")
 
     def _validate_todo_id(self, todo_id: int) -> None:
@@ -511,10 +510,10 @@ class TodoDatabase(DatabaseManager):
             ValueError: if todo_id is not a int or not superior to zero
         """
         if not isinstance(todo_id, int):
-            raise TypeError("todo_id must be an integer")
+            raise TypeError("⚠️todo_id must be an integer")
 
         if todo_id <= 0:
-            raise ValueError(f"todo_is must be strictly superior to 0")
+            raise ValueError(f"⚠️todo_is must be strictly superior to 0")
 
     def _validate_todo_name(self, todo_name: str) -> None:
         """
@@ -527,22 +526,42 @@ class TodoDatabase(DatabaseManager):
             ValueError: if todo_name is empty
         """
         if not todo_name or not todo_name.strip():
-            raise ValueError(f"todo_name is invalid, need to be a non-empty string.")
+            raise ValueError(f"⚠️todo_name is invalid, need to be a non-empty string.")
+
+    def _get_now_date(self, with_time: bool | None = False) -> str:
+        """
+        Get now FR formatted date with or without time.
+
+        Args:
+            with_time: True if need to integrate now time in the string output.
+
+        Raises:
+            ValueError: if with_time is not a boolean
+        """
+        if not isinstance(with_time, bool):
+            raise ValueError(f"⚠️with_time must be a boolean value.")
+
+        current_fr_time: datetime = datetime.datetime.now(pytz.timezone("Europe/Paris"))
+
+        if with_time:
+            return current_fr_time.strftime(format="%d/%m/%Y %H:%M")
+        else:
+            return current_fr_time.strftime(format="%d/%m/%Y")
 
     # PUBLIC METHODS
     def get_list_all_todos(self) -> list[dict[str, any]]:
         """
         Retrieve all todo items from the database.
-        
+
         This method fetches all records from the todos table and returns them
         as a list of dictionaries for easy manipulation and display.
-        
+
         Returns:
             List[Dict[str, Any]]: List of todo dictionaries, each containing all columns
-            
+
         Raises:
             DatabaseError: If the query fails or database is inaccessible
-            
+
         Example:
             todos = todo_db.get_list_all_todos()
             for todo in todos:
@@ -558,14 +577,14 @@ class TodoDatabase(DatabaseManager):
 
                 current_todos: list = [dict(row) for row in cursor.fetchall()]
 
-                logger.debug(f"Retrieved {len(current_todos)} todos from database.")
+                logger.info(f"✅Retrieved {len(current_todos)} todos from database.")
                 return current_todos
 
-        except DatabaseError as e:
-            logger.error(f"Failed to get list of all current todos: {e}")
+        except DatabaseError as error:
+            logger.error(f"🛑Failed to get list of all current todos: {error}")
             raise
 
-    def get_todo_by_id(self, todo_id: int) -> Optional[sqlite3.Row]:
+    def get_todo_by_id(self, todo_id: int) -> sqlite3.Row | None:
         """
         Retrieve a specific todo item by its unique ID.
 
@@ -600,17 +619,17 @@ class TodoDatabase(DatabaseManager):
                 result = cursor.fetchone()
 
                 if result:
-                    logger.debug(f"Retrieved todo with ID {todo_id}")
+                    logger.info(f"✅Retrieved todo with ID {todo_id}")
                 else:
-                    logger.debug(f"No todo found with ID {todo_id}")
+                    logger.info(f"✅No todo found with ID {todo_id}")
 
                 return result
 
-        except DatabaseError as e:
-            logger.error(f"Failed to retrieve todo item with todo_id {todo_id}: {e}")
+        except DatabaseError as error:
+            logger.error(f"🛑Failed to retrieve todo item with todo_id {todo_id}: {error}")
             raise
 
-    def get_todo_id_via_name(self, todo_name: str) -> Optional[int]:
+    def get_todo_id_via_name(self, todo_name: str) -> int | None:
         """
         Find the ID of a todo item by searching for its name.
 
@@ -646,21 +665,19 @@ class TodoDatabase(DatabaseManager):
 
                 if result:
                     todo_id = result[0]
-                    logger.debug(f"Retrieved one todo from table '{self.table_name}' with ID {todo_id}")
+                    logger.info(f"✅Retrieved one todo from table '{self.table_name}' with ID {todo_id}")
                     return todo_id
                 else:
-                    logger.debug(f"No todo found with name '{todo_name}'")
+                    logger.info(f"✅No todo found with name '{todo_name}'")
                     return None
 
-        except DatabaseError as e:
-            logger.error(f"Failed to search for todo '{todo_name}': {e}")
+        except DatabaseError as error:
+            logger.error(f"🛑Failed to search for todo '{todo_name}': {error}")
             raise
 
     def create_todo(self,
                     todo_name: str,
                     status: str,
-                    created_time: str,
-                    modified_time: str,
                     priority: str = "",
                     fire_or_clock: str = "",
                     source: str = "",
@@ -707,18 +724,18 @@ class TodoDatabase(DatabaseManager):
         self._validate_todo_name(todo_name)
 
         if not status or not status.strip():
-            raise ValueError(f"status is required and cannot be empty.")
-
-        if not created_time or not created_time.strip():
-            raise ValueError(f"created_time is required and cannot be empty.")
-
-        if not modified_time or not modified_time.strip():
-            raise ValueError(f"modified_time is required and cannot be empty.")
+            raise ValueError(f"⚠️status is required and cannot be empty.")
 
         # Validate status against allowed options
         if status not in STATUS_OPTIONS:
-            logger.warning(f"Status '{status}' is not in predefined options: {STATUS_OPTIONS}")
+            logger.warning(f"⚠️Status '{status}' is not in predefined options: {STATUS_OPTIONS}")
             raise ValueError(f"Status '{status}' is not in predefined options: '{STATUS_OPTIONS}'")
+
+        # Creation date value
+        created_time = self._get_now_date(with_time=False)
+
+        # Last modified date & time value
+        modified_time = self._get_now_date(with_time=True)
 
         # SQL Query
         try:
@@ -738,19 +755,19 @@ class TodoDatabase(DatabaseManager):
                     modified_time.strip(),
                     created_time.strip(),
                     comments.strip(),
-                    attachment_dir.strip()
+                    attachment_dir
                 ))
 
                 # Get the ID of the newly inserted record
                 new_todo_id = cursor.lastrowid
                 conn.commit()
 
-                logger.info(f"Created new todo '{todo_name}' with ID {new_todo_id}")
+                logger.info(f"✅Created new todo '{todo_name}' with ID {new_todo_id}")
                 return new_todo_id
 
-        except sqlite3.error as e:
-            logger.error(f"Failed to create todo '{todo_name}': {e}")
-            raise DatabaseError(f"Could not create todo: {e}")
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to create todo '{todo_name}': {error}")
+            raise DatabaseError(f"Could not create todo: {error}")
 
     def delete_todo(self, todo_id: int) -> bool:
         """
@@ -793,15 +810,15 @@ class TodoDatabase(DatabaseManager):
                 conn.commit()
 
                 if rows_affected > 0:
-                    logger.debug(f"Successfully deleted todo with ID {todo_id}")
+                    logger.info(f"✅Successfully deleted todo with ID {todo_id}")
                     return True
                 else:
-                    logger.info(f"No todo found with ID {todo_id} - nothing deleted")
+                    logger.info(f"✅No todo found with ID {todo_id} - nothing deleted")
                     return False
 
-        except sqlite3.Error as e:
-            logger.error(f"Failed to delete todo with ID '{todo_id}': {e}")
-            raise DatabaseError(f"Could not delete todo: {e}")
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to delete todo with ID '{todo_id}': {error}")
+            raise DatabaseError(f"Could not delete todo: {error}")
 
     def update_one_col(self, todo_id: int, col_to_update: str, new_value: any) -> None:
         """
@@ -829,27 +846,33 @@ class TodoDatabase(DatabaseManager):
 
         self._validate_todo_id(todo_id)
 
+        current_time = self._get_now_date(True)
+
         try:
-            with self._get_conn() as conn:
+            with (self._get_conn() as conn):
                 cursor = conn.cursor()
 
-                query: str = f"UPDATE todos SET {col_to_update} = ? WHERE id = ?"
-                cursor.execute(query, (new_value.strip(), todo_id))
+                query: str = f"""
+                UPDATE todos SET
+                    {col_to_update} = ?,
+                    modified_time = ?         
+                WHERE id = ?
+                """
+                cursor.execute(query, (new_value.strip(), current_time.strip(), todo_id))
                 conn.commit()
 
-            print(f"Updated column {col_to_update} for todo N°{todo_id}. "
+            print(f"✅Updated column {col_to_update} for todo N°{todo_id}. "
                   f"New value written: '{new_value}'")
 
-        except DatabaseError as e:
-            logger.error(f"Couldn't update colum '{col_to_update}' for todo_id '{todo_id}': {e}")
-            raise DatabaseError(f"Could not update todo: {e}")
+        except DatabaseError as error:
+            logger.error(f"🛑Couldn't update colum '{col_to_update}' for todo_id '{todo_id}': {error}")
+            raise DatabaseError(f"Could not update todo: {error}")
 
     def update_entire_todo(self, todo_id: int, todo_name: str, status: str, priority: str, fire_or_clock: str,
                            source: str,
-                           deadline: str,
-                           modified_time: str, attachment_dir: str, comments: str):
+                           deadline: str, comments: str) -> int:
         """
-        Update all the todo properties in database.
+        Update all the todo properties in database, except attachment_dir that is determined at creation, and can't be changed.
 
         This method allows you to modify all fields of a todo (except 'created_time' value). It includes validation to
         ensure proper functioning.
@@ -862,12 +885,10 @@ class TodoDatabase(DatabaseManager):
             fire_or_clock (str): Urgency indicator emoji (optional)
             source (str): Source or category of the task (optional)
             deadline (str): Due date for the task (optional)
-            modified_time (str): Last modification timestamp (optional)
             comments (str): Additional notes about the task (optional)
-            attachment_dir (str): Path to related files (optional)
 
         Returns:
-            Nothing
+            todo_id : int
 
         Raises:
             DatabaseError: if the updating fails
@@ -879,7 +900,9 @@ class TodoDatabase(DatabaseManager):
         self._validate_todo_name(todo_name)
 
         if not status or not status.strip():
-            raise ValueError("status is required and cannot be empty.")
+            raise ValueError("⚠️status is required and cannot be empty.")
+
+        current_time = self._get_now_date(True)
 
         try:
             with self._get_conn() as conn:
@@ -895,10 +918,9 @@ class TodoDatabase(DatabaseManager):
                                     source = ?,
                                     deadline = ?,
                                     comments = ?,
-                                    modified_time = ?,
-                                    attachment_dir = ?
+                                    modified_time = ?
                                 WHERE
-                                    id = ?
+                                    id = ?;
                             """
 
                 # The tuple of values to substitute into the query's '?' placeholders.
@@ -911,22 +933,24 @@ class TodoDatabase(DatabaseManager):
                     source,
                     deadline,
                     comments,
-                    modified_time,
-                    attachment_dir,
+                    current_time.strip(),
                     todo_id  # This corresponds to the final '?' in the WHERE clause.
                 )
 
                 cursor.execute(query, values_tuple)
                 conn.commit()
 
-        except sqlite3.Error as e:
-            logger.error(f"Failed to update todo with ID '{todo_id}': {e}")
-            raise DatabaseError(f"Could not update todo: {e}")
+            logger.info(f"✅ Successfully updated todo with ID: {todo_id}.")
+            return int(todo_id)
+
+        except sqlite3.Error as error:
+            logger.error(f"🛑Failed to update todo with ID '{todo_id}': {error}")
+            raise DatabaseError(f"Could not update todo: {error}")
 
 
 # DUMMY DATA
 todo_test = {
-    "todo_name": "Tester la nouvelle architecture",
+    "todo_name": "New date feature TO CREATE",
     "priority": "Medium",
     "source": "🤱 Mama",
     "fire_or_clock": "⏰",  # False for "clock" (scheduled task)
@@ -940,14 +964,6 @@ todo_test = {
 
 # TESTING
 if __name__ == "__main__":
-    db = TodoDatabase()
-    # db.create_todo(todo_name=todo_test["todo_name"], priority=todo_test["priority"], source=todo_test["source"],
-    #                fire_or_clock=todo_test["fire_or_clock"],
-    #                deadline=todo_test["deadline"], status=todo_test["status"], attachment_dir=todo_test["files"],
-    #                comments=todo_test["comments"],
-    #                created_time=todo_test["created_time"], modified_time=todo_test["modified_time"])
-    # all_todos = db.get_list_all_todos()
-    # for todo in all_todos:
-    #     print(todo)
-    # db.create_new_col(col_name="test_to_delete", col_type="TXT")
-    print(db.db_exists())
+    todos_database = TodoDatabase()
+    todos_database.delete_todo(50)
+    todos_database.delete_todo(53)
