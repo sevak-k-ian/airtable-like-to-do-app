@@ -11,9 +11,12 @@ ideas_and_todos.md
 .venv
 env/
 venv/
+__pycache__/
+*.pyc
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
 # Database files
 todos.db
