@@ -17,23 +17,23 @@ from pathlib import Path
 import datetime  # for "now"
 import pytz  # for "timezone"
 
-# ----- CONSTANT VALUES -----
-# Allowed values for different todo properties
-STATUS_OPTIONS = ["Todo", "Done"]
-PRIORITY_OPTIONS = ["High", "Medium", "Low"]
-SOURCE_OPTIONS = ["🔒 Perso", "👩‍❤️‍👨 Famille", "👶 Yeraz", "🤱 Mama", "💼 Hameaux Légers"]
-FIRE_OPTIONS = ["🔥", "⏰", ""]
-
-# Database schema definition - defines the 11 cols of the todos table
 DB_COLS = ['id', 'todo_name', 'status', 'priority', 'fire_or_clock', 'source', 'deadline', 'modified_time',
            'created_time', 'comments', 'attachment_dir']
+
+# Database schema definition - defines the 11 cols of the todos table
+logging.basicConfig(level=logging.DEBUG)  # All levels of infos are shown now for testing purpose, can turn this
 
 # Set up logging for DB operations
 # Instead of print("Something happened"), I write logger.info("Something happened")
 # I can easily turn logging on/off, save logs to files, and have different log levels (DEBUG, INFO, WARNING, ERROR).
-logging.basicConfig(level=logging.DEBUG)  # All levels of infos are shown now for testing purpose, can turn this
 # to WARNING level for production
 logger = logging.getLogger(__name__)
+
+class AuthorizedPropertiesOptions:
+    STATUS_OPTIONS = ["Todo", "Done"]
+    PRIORITY_OPTIONS = ["High", "Medium", "Low"]
+    SOURCE_OPTIONS = ["🔒 Perso", "👩‍❤️‍👨 Famille", "👶 Yeraz", "🤱 Mama", "💼 Hameaux Légers"]
+    FIRE_OPTIONS = ["🔥", "⏰", ""]
 
 
 class DatabaseError(Exception):
@@ -727,9 +727,9 @@ class TodoDatabase(DatabaseManager):
             raise ValueError(f"⚠️status is required and cannot be empty.")
 
         # Validate status against allowed options
-        if status not in STATUS_OPTIONS:
-            logger.warning(f"⚠️Status '{status}' is not in predefined options: {STATUS_OPTIONS}")
-            raise ValueError(f"Status '{status}' is not in predefined options: '{STATUS_OPTIONS}'")
+        if status not in AuthorizedPropertiesOptions.STATUS_OPTIONS:
+            logger.warning(f"⚠️Status '{status}' is not in predefined options: {AuthorizedPropertiesOptions.STATUS_OPTIONS}")
+            raise ValueError(f"Status '{status}' is not in predefined options: '{AuthorizedPropertiesOptions.STATUS_OPTIONS}'")
 
         # Creation date value
         created_time = self._get_now_date(with_time=False)
