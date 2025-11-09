@@ -7,6 +7,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 class FilterButton:
     """
     A filter button component that allows users to select multiple values from predefined options.
@@ -20,6 +21,7 @@ class FilterButton:
         available_choices: List of all possible values the user can select from
         current_selection: List of currently selected values (updated when user makes changes)
     """
+
     def __init__(self, button_name: str, available_choices: list[str]) -> None:
         """
         Initialize a FilterButton with a name and available choices.
@@ -35,7 +37,6 @@ class FilterButton:
         self.available_choices = available_choices
         # Starts empty; will be populated when user makes selections
         self.current_selection = []
-
 
     @classmethod
     def button_design(cls) -> ui.button:
@@ -60,11 +61,11 @@ class FilterButton:
         dimensions = 'mr-2 px-[6px] py-[1px]'
 
         button = ui.button().props('flat no-caps').classes(
-            f'bg-white hover:bg-gray-100 rounded-md inline-flex {airtable_shadow} {dimensions}')
+            f'bg-white hover:bg-gray-100 rounded-md flex items-center {airtable_shadow} {dimensions}')
 
         return button
 
-    def options_selector(self, on_selection_change_callback: Callable[[],None]) -> None:
+    def options_selector(self, on_selection_change_callback: Callable[[], None]) -> None:
         """
         Create the dropdown ui.select selector UI element inside the button.
 
@@ -88,12 +89,12 @@ class FilterButton:
             AttributeError: If selector.value cannot be accessed (shouldn't happen in normal use)
         """
         # Create the multi-select dropdown UI element
-        selector = ui.select(
+        selector = (ui.select(
             options=self.available_choices,
-            multiple=True, # Allow selecting multiple values
+            multiple=True,  # Allow selecting multiple values
             label=self.button_name,
-            on_change=lambda: update_filter_selection_data() # Trigger update on any change
-        ).classes('min-w-44 flex').props('use-chips borderless')
+            on_change=lambda: update_filter_selection_data()  # Trigger update on any change
+        ).classes('min-w-44 flex items-center').props('use-chips borderless'))
 
         # CLOSURE PATTERN: This inner function "closes over" both `selector` and `self`
         def update_filter_selection_data() -> None:
@@ -118,7 +119,7 @@ class FilterButton:
 
                 # Notify parent FilterBar to rebuild its aggregated dictionary
                 # This ensures FilterBar.user_selection always reflects current state
-                on_selection_change_callback() # Notifies the parent FilterBar via callback to update its aggregated selection data
+                on_selection_change_callback()  # Notifies the parent FilterBar via callback to update its aggregated selection data
                 logger.info(f"✅ Notified FilterBar of selection change in '{self.button_name}'")
 
 
@@ -134,8 +135,7 @@ class FilterButton:
                 # Catch-all for unexpected errors, but log them specifically
                 logger.error(f"🛑 Unexpected error updating '{self.button_name}': {type(error).__name__}: {error}")
 
-
-    def display(self, on_selection_change_callback: Callable[[],None]) -> None:
+    def display(self, on_selection_change_callback: Callable[[], None]) -> None:
         """
         Create and display the complete FilterButton UI (button + dropdown).
 

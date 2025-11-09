@@ -2,11 +2,12 @@ import logging
 from typing import Optional
 from nicegui import ui
 from src.ui.components.filter_button import FilterButton
-from src.models.database import AuthorizedPropertiesOptions
+# from src.models.database import AuthorizedPropertiesOptions
 
 # Configure logging at module level
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
 
 class FilterBar:
     """
@@ -27,6 +28,7 @@ class FilterBar:
         user_selection: Dictionary mapping button names to their current selections
             Example: {"Status": ["Open", "In Progress"], "Priority": ["High"]}
     """
+
     def __init__(self, *all_filter_buttons: FilterButton) -> None:
         """
         Initialize a FilterBar with multiple FilterButton instances.
@@ -96,7 +98,6 @@ class FilterBar:
             # Re-raise so the caller knows something went wrong
             # Don't silently swallow errors!
             raise
-
 
     def update_user_selection(self) -> None:
         """

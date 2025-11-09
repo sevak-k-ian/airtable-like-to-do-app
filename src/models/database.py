@@ -29,6 +29,7 @@ logging.basicConfig(level=logging.DEBUG)  # All levels of infos are shown now fo
 # to WARNING level for production
 logger = logging.getLogger(__name__)
 
+
 class AuthorizedPropertiesOptions:
     STATUS_OPTIONS = ["Todo", "Done"]
     PRIORITY_OPTIONS = ["High", "Medium", "Low"]
@@ -728,8 +729,10 @@ class TodoDatabase(DatabaseManager):
 
         # Validate status against allowed options
         if status not in AuthorizedPropertiesOptions.STATUS_OPTIONS:
-            logger.warning(f"⚠️Status '{status}' is not in predefined options: {AuthorizedPropertiesOptions.STATUS_OPTIONS}")
-            raise ValueError(f"Status '{status}' is not in predefined options: '{AuthorizedPropertiesOptions.STATUS_OPTIONS}'")
+            logger.warning(
+                f"⚠️Status '{status}' is not in predefined options: {AuthorizedPropertiesOptions.STATUS_OPTIONS}")
+            raise ValueError(
+                f"Status '{status}' is not in predefined options: '{AuthorizedPropertiesOptions.STATUS_OPTIONS}'")
 
         # Creation date value
         created_time = self._get_now_date(with_time=False)
