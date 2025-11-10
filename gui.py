@@ -5,14 +5,13 @@ from nicegui import ui, events
 from collections import defaultdict  # To create an empty dict that can be filled with [keys]-[list_values]
 from typing import List, Dict
 import style  # My file that manages some specific redundant styling used in gui
-from constant import STATUS_OPTIONS, PRIORITY_OPTIONS, SOURCE_OPTIONS, FIRE_OPTIONS
 import datetime
 from zoneinfo import ZoneInfo
 
-
 from src.services.file_service import FileManager
-from src.models.database import TodoDatabase
-from src.models.todo import Todo
+from src.models.database import TodoDatabase, AuthorizedPropertiesOptions
+from src.ui.components.filter_button import FilterButton
+from src.ui.components.filter_bar import FilterBar
 
 style.GOOGLE_INTER_FONT  # Load the "Inter" font for the whole page
 
@@ -42,70 +41,6 @@ def get_fresh_fr_date_with_time() -> str:
     # Format the result into your desired string format
     formatted_fr_date_time = now_french.strftime("%d/%m/%Y %H:%M")
     return formatted_fr_date_time
-
-
-
-# ----GROUPED LIST PAGE AND ITS ELEMENTS----
-def build_filter_button(name: str, options: List[str], filters: Dict):
-    """Creates an Airtable-style filter button with its own menu."""
-
-    def get_button_text(selections: List[str]) -> str:
-        """Defines the text appearing inside the filtering dropdown button when selection is made"""
-        if not selections:
-            return name
-        elif len(selections) == 1:
-            value_text = selections[0]
-            return f'{name}: {value_text[:10] + "..." if len(value_text) > 10 else value_text}'
-        else:
-            return f'{name}: {len(selections)} selected'
-
-    def active_filters_notification_msg(active_filters: dict) -> str:
-        """Builds a nice sentence that will be displayed each time a filter option is (un)selected"""
-        sentence_items = []
-
-        for property, list_of_selections in active_filters.items():
-            filter_not_empty = True if len(list_of_selections) > 0 else False
-            if filter_not_empty:
-                for selection in list_of_selections:
-                    sentence_items.append(f"{selection}")
-
-        joined_str_items: str = "  │  ".join(sentence_items)
-        formatted_sentence: str = f"Active filters : {joined_str_items}."
-        return formatted_sentence
-
-    # Initialize the filter entry
-    filters[name.lower()] = []
-
-    # The button that will anchor the menu
-    airtable_shadow = 'shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'
-    with ui.button() \
-            .props('flat no-caps') \
-            .classes(
-        f'bg-white hover:bg-gray-100 rounded-md text-zinc-900 text-xs {airtable_shadow} mr-2 px-[6px] py-[4px]') as button:
-
-        # The menu is now defined INSIDE the button's context
-        with ui.menu():
-            ui.label(f'Filter by {name}').classes('px-4 pt-2 font-semibold')
-            ui.select(options, multiple=True) \
-                .classes('w-56') \
-                .bind_value(filters, name.lower()) \
-                .on('update:model-value',
-                    lambda: (button.update(), ui.notify(f'{active_filters_notification_msg(active_filters)}')))
-
-        # The button's visual content (label and icon)
-        with ui.row().classes('items-center gap-2 no-wrap'):
-            ui.label().bind_text_from(filters, name.lower(), backward=get_button_text).classes(
-                "truncate text-black font-light text-lg")
-            ui.icon('expand_more', size='sm').classes("text-black font-light")
-
-
-def build_filter_bar(filters: dict):
-    """Creates a horizontal bar of filter dropdowns."""
-    with ui.row().classes('items-center gap-2 p-2'):
-        build_filter_button('Status', STATUS_OPTIONS, filters)
-        build_filter_button('Priority', PRIORITY_OPTIONS, filters)
-        build_filter_button('Source', SOURCE_OPTIONS, filters)
-        build_filter_button('Fire', FIRE_OPTIONS, filters)
 
 
 def group_todos_by_property(todos_list: list[dict], grouping_property: str) -> dict:
@@ -219,8 +154,17 @@ def build_list_page(property_to_use_to_group: str):
     with list_view_container:
         # Build the filter bar & "new todo" header
         with ui.row().classes('w-full justify-between items-center p-4 border-b bg-white'):
-            # filter bar
-            build_filter_bar(active_filters)
+            # Initializing the individual buttons
+            status_button = FilterButton("Status", AuthorizedPropertiesOptions.STATUS_OPTIONS)
+            priority_button = FilterButton("Priority", AuthorizedPropertiesOptions.PRIORITY_OPTIONS)
+            source_button = FilterButton("Source", AuthorizedPropertiesOptions.SOURCE_OPTIONS)
+
+            # Create the FilterBar with all buttons
+            filter_bar = FilterBar(status_button, priority_button, source_button)
+
+            # Display the UI - this establishes callback connections
+            filter_bar.display()
+
             # new-todo
             todo_creation_dialog_box = build_create_todo_dialog()  # The creation dialog will be invisible until opened.
             ui.button('Create new todo', on_click=todo_creation_dialog_box.open).classes(
@@ -360,26 +304,26 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                 # 1/4 : status
                 with ui.column():
                     ui.label("Status").classes(style.AT_TODO_PROPERTIES_HEADING)
-                    status_dropdown_selector = ui.select(options=STATUS_OPTIONS,
+                    status_dropdown_selector = ui.select(options=AuthorizedPropertiesOptions.STATUS_OPTIONS,
                                                          value=todo_data["status"]).classes(
                         style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                 # 2/4 : priority
                 with ui.column():
                     ui.label("Priority").classes(style.AT_TODO_PROPERTIES_HEADING)
-                    priority_dropdown_selector = ui.select(options=PRIORITY_OPTIONS,
+                    priority_dropdown_selector = ui.select(options=AuthorizedPropertiesOptions.PRIORITY_OPTIONS,
                                                            value=todo_data["priority"]).classes(
                         style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                 # 3/4 : fire
                 with ui.column():
                     ui.label("Fire").classes(style.AT_TODO_PROPERTIES_HEADING)
-                    fire_dropdown_selector = ui.select(options=FIRE_OPTIONS,
+                    fire_dropdown_selector = ui.select(options=AuthorizedPropertiesOptions.FIRE_OPTIONS,
                                                        value=todo_data["fire_or_clock"]).classes(
                         style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                 # 4/4 : source
                 with ui.column():
                     ui.label("Source").classes(style.AT_TODO_PROPERTIES_HEADING)
                     source_dropdown_selector = ui.select(
-                        options=SOURCE_OPTIONS, value=todo_data["source"]).classes(
+                        options=AuthorizedPropertiesOptions.SOURCE_OPTIONS, value=todo_data["source"]).classes(
                         style.AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
         # 2nd SECTION (3 cells grid element in a row) : DEADLINE, CREATED TIME, LAST MODIFIED TIME

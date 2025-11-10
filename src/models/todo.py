@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass()
 class Todo:
     name: str
@@ -15,23 +16,23 @@ class Todo:
     attachments: str | None = None
 
     @classmethod
-    def from_dict_to_obj(cls, row_dict:dict) -> "Todo":
+    def from_dict_to_obj(cls, row_dict: dict) -> "Todo":
         """Create Todo object from database row"""
         return cls(
-            name = row_dict["todo_name"],
-            status = row_dict["status"],
-            last_modified = row_dict.get("modified_time"),
-            created_time = row_dict.get("created_time"),
-            id = row_dict.get("id"),
-            priority = row_dict.get("priority"),
-            fire = row_dict.get("fire_or_clock"),
-            source = row_dict.get("source"),
-            deadline = row_dict.get("deadline"),
-            comments = row_dict.get("comments"),
-            attachments =row_dict.get("attachment_dir")
+            name=row_dict["todo_name"],
+            status=row_dict["status"],
+            last_modified=row_dict.get("modified_time"),
+            created_time=row_dict.get("created_time"),
+            id=row_dict.get("id"),
+            priority=row_dict.get("priority"),
+            fire=row_dict.get("fire_or_clock"),
+            source=row_dict.get("source"),
+            deadline=row_dict.get("deadline"),
+            comments=row_dict.get("comments"),
+            attachments=row_dict.get("attachment_dir")
         )
 
-    def from_obj_to_dict(self)-> dict:
+    def from_obj_to_dict(self) -> dict:
         """Create row/dict from todo object."""
         todo_as_dict = {
             "id": self.id,
@@ -47,9 +48,6 @@ class Todo:
             "attachment_dir": self.attachments
         }
         return todo_as_dict
-
-
-
 
 
 test_row = {
@@ -70,6 +68,3 @@ if __name__ == "__main__":
     print(todo)
     dict_version = todo.from_obj_to_dict()
     print(dict_version)
-
-
-
