@@ -25,3 +25,5 @@ todos.db
 # Other
 .DS_Store
 *.local
+.iml
+.pyc
