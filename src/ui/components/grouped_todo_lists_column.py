@@ -20,7 +20,6 @@ Design Decisions:
       display() handles rendering. Allows re-displaying without recreating objects.
 """
 import logging
-from typing import Optional
 from nicegui import ui
 
 from gui import main_container
@@ -31,7 +30,8 @@ logger = logging.getLogger(__name__)
 
 # Valid grouping properties that can be used to organize todos
 # Helps catch typos and documents intended grouping dimensions
-VALID_GROUPING_PROPERTIES = {"source", "status", "priority", "deadline", "fire_or_clock"}
+VALID_GROUPING_PROPERTIES = {"source", "status", "priority", "fire_or_clock"}
+
 
 class GroupedTodoListsColumn:
     """
@@ -56,7 +56,8 @@ class GroupedTodoListsColumn:
         expandable_groups (List[ExpandableGroup]): List of groups to display vertically
         grouping_property (str): The property used to create these groups (e.g., "status")
     """
-    def __init__(self,*expandable_groups: ExpandableGroup, grouping_property:str) -> None:
+
+    def __init__(self, *expandable_groups: ExpandableGroup, grouping_property: str) -> None:
         """
         Initialize the grouped todo lists column.
 
@@ -107,7 +108,7 @@ class GroupedTodoListsColumn:
         # Store as list for mutability (allows adding/removing groups later)
         # WHY list()? Converts tuple from *args to list, enabling future modifications
         self.expandable_groups: list[ExpandableGroup] = list(expandable_groups)
-        self.grouping_property : str = grouping_property
+        self.grouping_property: str = grouping_property
 
         logger.info(
             f"GroupedTodoListsColumn initialized with {len(self.expandable_groups)} groups, "
@@ -141,9 +142,9 @@ class GroupedTodoListsColumn:
         """
         try:
             with ui.column().classes("w-full") as column_container:
-                #Render each group, continuing even if individual groups fail
+                # Render each group, continuing even if individual groups fail
                 successful_displays = 0
-                
+
                 for index, expandable_group in enumerate(self.expandable_groups):
                     try:
                         expandable_group.display()
@@ -153,8 +154,8 @@ class GroupedTodoListsColumn:
                         # Log the error with context but continue to next group
                         # WHY continue? One broken group shouldn't break the entire UI
                         logger.error(
-                            f"Failed to display group at index {idx} in "
-                            f"GroupedTodoListsColumn (grouping='{self.grouping_property}'): {e}",
+                            f"Failed to display group at index {index} in "
+                            f"GroupedTodoListsColumn (grouping='{self.grouping_property}'): {error}",
                             exc_info=True
                         )
 
@@ -180,11 +181,6 @@ class GroupedTodoListsColumn:
                 exc_info=True
             )
             raise
-
-
-
-
-
 
 
 if __name__ in {"__main__", "__mp_main__"}:
@@ -249,6 +245,6 @@ if __name__ in {"__main__", "__mp_main__"}:
     group_1 = ExpandableGroup(todo_sample_data_1, todo_sample_data_2, group_name="Source")
     group_2 = ExpandableGroup(todo_sample_data_3, todo_sample_data_4, group_name="Source")
 
-    GroupedTodoListsColumn(group_1,group_2,grouping_property="source").display()
+    GroupedTodoListsColumn(group_1, group_2, grouping_property="source").display()
 
     ui.run(language='fr')
