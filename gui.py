@@ -153,7 +153,7 @@ def build_list_page(property_to_use_to_group: str):
 
     with list_view_container:
         # Build the filter bar & "new todo" header
-        with ui.row().classes('w-full justify-between items-center p-4 border-b bg-white'):
+        with ui.row().classes('w-full justify-between items-center p-4 bg-white'):
             # Initializing the individual buttons
             status_button = FilterButton("Status", AuthorizedPropertiesOptions.STATUS_OPTIONS)
             priority_button = FilterButton("Priority", AuthorizedPropertiesOptions.PRIORITY_OPTIONS)
@@ -454,7 +454,7 @@ def open_todo_details(todo: dict):
 
 ############# TITLE MAIN LAYOUT LOGIC #############
 pass
-
+# if __name__ == "__main__":
 with (ui.column().classes("w-full h-screen") as main_container):
     # Assign the created element to your global variable
     list_view_container = ui.column().classes("w-full h-screen")

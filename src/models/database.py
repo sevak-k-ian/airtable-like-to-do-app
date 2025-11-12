@@ -968,5 +968,5 @@ todo_test = {
 # TESTING
 if __name__ == "__main__":
     todos_database = TodoDatabase()
-    todos_database.delete_todo(50)
-    todos_database.delete_todo(53)
+    todos_database.delete_todo(6)
+    todos_database.delete_todo(7)

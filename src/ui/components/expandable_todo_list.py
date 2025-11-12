@@ -186,7 +186,7 @@ class ExpandableGroup:
         is_group_expanded (bool): Initial expansion state (currently unused by NiceGUI)
     """
 
-    def __init__(self, *todos: dict[str, Any], group_name: str, is_group_expanded: bool = False) -> None:
+    def __init__(self, *todos: dict[str, Any], group_name: str | None, is_group_expanded: bool = False) -> None:
         """
         Initialize an expandable group of todos.
 
@@ -201,10 +201,6 @@ class ExpandableGroup:
             ValueError: If group_name is empty
             TypeError: If todos are not dictionaries
         """
-        if not group_name or not group_name.strip():
-            logger.error("ExpandableGroup initialized with empty group_name")
-            raise ValueError("group_name cannot be empty")
-
         try:
             # Store as list for mutability (allows sorting/filtering later)
             self.todos = list(todos)

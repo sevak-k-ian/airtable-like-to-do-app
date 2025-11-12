@@ -21,24 +21,23 @@ Design Decisions:
 """
 import logging
 from nicegui import ui
+from pprint import pprint
 
-from gui import main_container
+# Valid grouping properties that can be used to organize todos
+# Helps catch typos and documents intended grouping dimensions
+from src.business_logic.grouping import group_todos_by_property, VALID_GROUPING_PROPERTIES
+from src.models.database import TodoDatabase
 from src.ui.components.expandable_todo_list import ExpandableGroup
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
-
-# Valid grouping properties that can be used to organize todos
-# Helps catch typos and documents intended grouping dimensions
-VALID_GROUPING_PROPERTIES = {"source", "status", "priority", "fire_or_clock"}
-
 
 class GroupedTodoListsColumn:
     """
     Container component that displays multiple expandable todo groups in a vertical column.
     
     This is a composition component that manages the layout and rendering of multiple
-    ExpandableGroup instances. It doesn't handle individual todo logic - that's delegated
+    todos instances. It doesn't handle individual todo logic - that's delegated
     to the ExpandableGroup components.
     
     Design Notes:
@@ -53,18 +52,16 @@ class GroupedTodoListsColumn:
         - Display todos grouped by priority (High, Medium, Low)
     
     Attributes:
-        expandable_groups (List[ExpandableGroup]): List of groups to display vertically
+        all_todos (List[dict]): List of groups to display vertically
         grouping_property (str): The property used to create these groups (e.g., "status")
     """
 
-    def __init__(self, *expandable_groups: ExpandableGroup, grouping_property: str) -> None:
+    def __init__(self, all_todos: list[dict], grouping_property: str) -> None:
         """
         Initialize the grouped todo lists column.
 
         Args:
-            *expandable_groups: Variable number of ExpandableGroup instances to display.
-                               Using *args allows flexible composition:
-                               GroupedTodoListsColumn(group1, group2, group3, ...)
+            all_todos: list of todos_data coming from the SQL Database
             grouping_property (str): The property by which todos are grouped.
                                     Examples: "source", "status", "priority"
                                     Used for documentation and potential UI display.
@@ -92,35 +89,35 @@ class GroupedTodoListsColumn:
                 f"{VALID_GROUPING_PROPERTIES}. This may be intentional for custom groupings."
             )
 
-        # Validate that all items are ExpandableGroup instances
+        # Validate that all items are todo_data dict
         # WHY validate here? Fail fast - catch type errors at initialization, not during display
-        for index, group in enumerate(expandable_groups):
-            if not isinstance(group, ExpandableGroup):
+        for index, todo_data in enumerate(all_todos):
+            if not isinstance(todo_data, dict):
                 logger.error(
-                    f"Invalid group at index {index}: expected ExpandableGroup, "
-                    f"got {type(group).__name__}"
+                    f"Invalid todo_data at index {index}: expected dict"
                 )
                 raise TypeError(
-                    f"All expandable_groups must be ExpandableGroup instances. "
-                    f"Item at index {index} is {type(group).__name__}"
+                    f"All todo_data must be dict. "
+                    f"Item at index {index} is {type(todo_data)}"
                 )
+
 
         # Store as list for mutability (allows adding/removing groups later)
         # WHY list()? Converts tuple from *args to list, enabling future modifications
-        self.expandable_groups: list[ExpandableGroup] = list(expandable_groups)
+        self.all_todos: list[dict] = all_todos
         self.grouping_property: str = grouping_property
 
         logger.info(
-            f"GroupedTodoListsColumn initialized with {len(self.expandable_groups)} groups, "
+            f"GroupedTodoListsColumn initialized"
             f"grouped by '{grouping_property}'"
         )
 
     def display(self):
         """
-        Render all expandable groups in a vertical column layout.
+        Render all todos into expandable groups of todos in a vertical column layout.
 
         The column takes full width and stacks groups vertically. Each group is
-        independently expandable/collapsible.
+        independently expandable/collapsible, after being grouped by a method.
 
         Returns:
             ui.column: The NiceGUI column component containing all groups
@@ -134,27 +131,24 @@ class GroupedTodoListsColumn:
             - Easier debugging: see which groups work and which don't
             - Graceful degradation: partial functionality beats complete failure
 
-        Alternative Approach (not used):
-            We could fail fast and stop on first error. This would be appropriate if:
-            - All groups must be present (business requirement)
-            - Partial display would confuse users more than an error message
-            - Groups have dependencies on each other
         """
         try:
+            todos_grouped_by_property = group_todos_by_property(todos=self.all_todos,
+                                                                grouping_property=self.grouping_property)
             with ui.column().classes("w-full") as column_container:
                 # Render each group, continuing even if individual groups fail
                 successful_displays = 0
 
-                for index, expandable_group in enumerate(self.expandable_groups):
+                for grouping_key, grouped_todos_dict in todos_grouped_by_property.items():
                     try:
-                        expandable_group.display()
+                        ExpandableGroup(*grouped_todos_dict, group_name=grouping_key).display()
                         successful_displays += 1
 
                     except Exception as error:
                         # Log the error with context but continue to next group
                         # WHY continue? One broken group shouldn't break the entire UI
                         logger.error(
-                            f"Failed to display group at index {index} in "
+                            f"Failed to display group at index {grouping_key} in "
                             f"GroupedTodoListsColumn (grouping='{self.grouping_property}'): {error}",
                             exc_info=True
                         )
@@ -163,12 +157,12 @@ class GroupedTodoListsColumn:
                         # This shows users that a group exists but failed to load
                         with ui.card().classes("w-full p-4 bg-red-50 border border-red-200"):
                             ui.label("⚠️ Failed to load this group").classes("text-red-600 font-semibold")
-                            ui.label(f"Error: {str(e)}").classes("text-sm text-red-500")
+                            ui.label(f"Error: {str(error)}").classes("text-sm text-red-500")
 
                         continue
 
             logger.info(
-                f"GroupedTodoListsColumn displayed: {successful_displays}/{len(self.expandable_groups)} "
+                f"GroupedTodoListsColumn displayed: {successful_displays}/{len(todos_grouped_by_property)} "
                 f"groups rendered successfully (grouping='{self.grouping_property}')"
             )
             return column_container
@@ -184,67 +178,6 @@ class GroupedTodoListsColumn:
 
 
 if __name__ in {"__main__", "__mp_main__"}:
-    # DUMMY DATA
-    todo_sample_data_1 = {
-        "id": 22,
-        "todo_name": "Buy groceries",
-        "status": "Todo",
-        "priority": "High",
-        "fire_or_clock": "🔥",
-        "source": "🔒 Perso",
-        "deadline": "25/12/2024",
-        "modified_time": "20/12/2024 10:30",
-        "created_time": "19/12/2024 09:15",
-        "comments": "Don't forget the milk",
-        "attachment_dir": "folder_123"
-    }
-
-    todo_sample_data_2 = {
-        "id": 23,
-        "todo_name": "Prepare Q4 presentation slides",
-        "status": "Todo",
-        "priority": "Medium",
-        "fire_or_clock": "⏰",
-        "source": "🔒 Perso",
-        "deadline": "15/01/2025",
-        "modified_time": "10/01/2025 14:20",
-        "created_time": "08/01/2025 11:00",
-        "comments": "Need to include new sales figures.",
-        "attachment_dir": "presentations/q4_final"
-    }
-
-    todo_sample_data_3 = {
-        "id": 24,
-        "todo_name": "Book flight to conference",
-        "status": "Done",
-        "priority": "High",
-        "fire_or_clock": "🔥",
-        "source": "🔒 Perso",
-        "deadline": "10/12/2024",
-        "modified_time": "05/12/2024 09:00",
-        "created_time": "01/12/2024 17:30",
-        "comments": "Booked on AirFrance. Confirmation in email.",
-        "attachment_dir": ""
-    }
-
-    todo_sample_data_4 = {
-        "id": 25,
-        "todo_name": "Call the electrician",
-        "status": "Todo",
-        "priority": "Low",
-        "fire_or_clock": "⏰",
-        "source": "🔒 Perso",
-        "deadline": "30/11/2024",
-        "modified_time": "25/11/2024 08:00",
-        "created_time": "25/11/2024 08:00",
-        "comments": "",
-        "attachment_dir": "contacts/services"
-    }
-
-    # Expandable group
-    group_1 = ExpandableGroup(todo_sample_data_1, todo_sample_data_2, group_name="Source")
-    group_2 = ExpandableGroup(todo_sample_data_3, todo_sample_data_4, group_name="Source")
-
-    GroupedTodoListsColumn(group_1, group_2, grouping_property="source").display()
-
+    all_database_todos = TodoDatabase(db_path="../../../todos.db").get_list_all_todos()
+    GroupedTodoListsColumn(all_database_todos, "fire_or_clock").display()
     ui.run(language='fr')
