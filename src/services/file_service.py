@@ -1,10 +1,12 @@
 from pathlib import Path
 import logging
 from typing import LiteralString
-from nicegui import events
+from nicegui import events, ui
 import secrets
 import string
 from shutil import rmtree
+from pprint import pprint
+
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -164,8 +166,8 @@ class FileManager:
             AttributeError message, Exception message
         """
         try:
-            self.uploaded_files.append({"file_name": e.name, "file_content": e.content})
-            logger.info(f"✅Successfully added '{e.name}' file to 'uploaded_files' list.")
+            self.uploaded_files.append({"file_name": e.file.name, "uploaded_file_full_data": e.file})
+            logger.info(f"✅Successfully added '{e.file.name}' file to 'uploaded_files' list.")
         except AttributeError as error:
             logger.error(f"🛑Failed to access upload event properties: {error}")
             raise
@@ -173,7 +175,7 @@ class FileManager:
             logger.error(f"🛑Failed to temporarily save '{e.name}': {error}")
             raise
 
-    def flush_uploads(self, todo_folder_name: str) -> int | None:
+    async def flush_uploads(self, todo_folder_name: str) -> int | None:
         """
         This method writes/saves locally to a local todo folder the files whose complete data is stored in the
         FileManager object's uploaded_files list.
@@ -214,8 +216,9 @@ class FileManager:
                     continue
 
                 # Save file locally
-                with open(file_path, "wb") as f:
-                    f.write(file_data["file_content"].read())
+                #with open(file_path, "wb") as f:
+                    #f.write(file_data["file_content"].read())
+                await file_data["uploaded_file_full_data"].save(file_path)
                 files_saved.append(file_data["file_name"])  # Add successfully save file to counter
 
             logger.info(f"✅Successfully saved {len(files_saved)} files to '{todo_folder_name}' folder.")

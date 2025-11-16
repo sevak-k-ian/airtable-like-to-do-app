@@ -204,7 +204,6 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
         Returns:
             The `ui.column` element containing the entire shared layout.
         """
-    global upload_batch_data
     global db
 
     with ui.column().classes('w-full h-full bg-white p-4') as shared_one_todo_focus_layout:
@@ -223,7 +222,7 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                 """
                 # test
                 if usage_type == "edit":
-                    def handle_todo_edit():
+                    async def handle_todo_edit():
                         modified_todo_id = db.update_entire_todo(todo_id=todo_data["id"], todo_name=todo_name.value,
                                                                  status=status_dropdown_selector.value,
                                                                  priority=priority_dropdown_selector.value,
@@ -233,7 +232,7 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                                                                  comments=comment_editor_property.value)
                         ui.notify("✅ Todo edited")
                         refresh_list_view(property_to_use_to_group="source")
-                        saved_files = file_manager.flush_uploads(
+                        saved_files = await file_manager.flush_uploads(
                             todo_folder_name=db.get_todo_by_id(modified_todo_id)["attachment_dir"])
                         if saved_files == 0:
                             ui.notify("No files to save")
@@ -242,14 +241,14 @@ def build_todo_item(todo_data: dict, usage_type: str) -> ui.column:
                         elif saved_files is None:
                             pass
 
-                    generic_btn = ui.button(text="Edit", on_click=lambda: handle_todo_edit()).classes(
+                    generic_btn = ui.button(text="Edit", on_click= lambda: handle_todo_edit()).classes(
                         style.AT_DONE_CTA_BTN_STYLE).props('no-caps')
                     return generic_btn
 
                 elif usage_type == "create":
-                    def handle_todo_creation():
+                    async def handle_todo_creation():
                         todo_folder_name: str = file_manager.create_folder_locally(todo_name=todo_name.value)
-                        saved_files = file_manager.flush_uploads(todo_folder_name=todo_folder_name)
+                        saved_files = await file_manager.flush_uploads(todo_folder_name=todo_folder_name)
                         if saved_files == 0:
                             ui.notify("No files to save")
                         elif saved_files > 0:
