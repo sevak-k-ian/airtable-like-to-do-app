@@ -113,7 +113,7 @@ class TodoDetailsDialog:
                 with ui.row(wrap=False).classes("w-full px-2 py-0 !bg-[#f3f6fc]"):
                     with ui.column().classes('w-[100%] pl-2 py-0 gap-1'):
                         ui.label("Comments").classes(AT_TODO_PROPERTIES_HEADING)
-                        self.comments_editor = ui.editor(placeholder='Type something here').classes("w-full")
+                        self.comments_editor = ui.editor(placeholder='Type something here', value=self.todo_dict["comments"]).classes("w-full")
 
                 # 4TH SECTION (row) : ATTACHMENTS
                 with ui.column().classes("gap-1 w-full"):
