@@ -35,9 +35,9 @@ class TodoDetailsDialog:
 
         # Create the dialog ui + all his children components that will take instance’s attribute values from todo_dict
         with ui.dialog(value=True).props("full-width full-height") as todo_dialog:
-            with ui.column().classes('w-full h-full !bg-[#f3f6fc] p-4') as main_container:
+            with ui.column().classes('w-full h-full !bg-[#f3f6fc] px-4 pt-8 pb-4') as main_container:
                 # HEADER SECTION (to-do name + CTA)
-                with ui.row().classes("w-full no-wrap items-center p-2"):
+                with ui.row().classes("w-full no-wrap items-center px-2 py-0"):
                     self.name_input = ui.input(value=self.todo_dict['todo_name']).classes(AT_TODO_HEADER_STYLE).props(
                         "borderless")
 
@@ -48,75 +48,93 @@ class TodoDetailsDialog:
                     DeleteButton(callback_function_on_click=self.handle_todo_delete)
 
                 # 1st SECTION (4 cells grid element in a row) : PRIORITY, STATUS, FIRE, SOURCE
-                with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
+                with ui.row().classes("bg-green w-full px-2 py-0 !bg-[#f3f6fc] justify-between"):
                     with ui.grid(columns=4).classes("w-full p-2 !bg-[#f3f6fc]"):
                         # 1/4 : status
-                        self.status_select = ui.select(options=AuthorizedPropertiesOptions.STATUS_OPTIONS,
-                                                       value=self.todo_dict["status"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props(
-                            'dense borderless')
+                        with ui.column().classes("p-0 gap-1"):
+                            ui.label("Status").classes(AT_TODO_PROPERTIES_HEADING)
+                            self.status_select = ui.select(options=AuthorizedPropertiesOptions.STATUS_OPTIONS,
+                                                           value=self.todo_dict["status"]).classes(
+                                AT_PROPERTY_SELECTOR_STYLE).props(
+                                'dense borderless')
                         # 2/4 : priority
-                        self.priority_select = ui.select(options=AuthorizedPropertiesOptions.PRIORITY_OPTIONS,
-                                                         value=self.todo_dict["priority"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props(
-                            'dense borderless')
+                        with ui.column().classes("p-0 gap-1"):
+                            ui.label("Priority").classes(AT_TODO_PROPERTIES_HEADING)
+                            self.priority_select = ui.select(options=AuthorizedPropertiesOptions.PRIORITY_OPTIONS,
+                                                             value=self.todo_dict["priority"]).classes(
+                                AT_PROPERTY_SELECTOR_STYLE).props(
+                                'dense borderless')
                         # 3/4 : fire
-                        self.fire_or_clock_select = ui.select(options=AuthorizedPropertiesOptions.FIRE_OPTIONS,
-                                                              value=self.todo_dict["fire_or_clock"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                        with ui.column().classes("p-0 gap-1"):
+                            ui.label("Timing").classes(AT_TODO_PROPERTIES_HEADING)
+                            self.fire_or_clock_select = ui.select(options=AuthorizedPropertiesOptions.FIRE_OPTIONS,
+                                                                  value=self.todo_dict["fire_or_clock"]).classes(
+                                AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
                         # 4/4 : source
-                        self.source_select = ui.select(
-                            options=AuthorizedPropertiesOptions.SOURCE_OPTIONS, value=self.todo_dict["source"]).classes(
-                            AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
+                        with ui.column().classes("p-0 gap-1"):
+                            ui.label("Source").classes(AT_TODO_PROPERTIES_HEADING)
+                            self.source_select = ui.select(
+                                options=AuthorizedPropertiesOptions.SOURCE_OPTIONS, value=self.todo_dict["source"]).classes(
+                                AT_PROPERTY_SELECTOR_STYLE).props('dense borderless')
 
                 # 2nd SECTION (3 cells grid element in a row) : DEADLINE, CREATED TIME, LAST MODIFIED TIME
-                with ui.row().classes("bg-green w-full p-2 !bg-[#f3f6fc] justify-between"):
+                with ui.row().classes("bg-green w-full px-2 py-0 !bg-[#f3f6fc] justify-between"):
                     with ui.grid(columns=3).classes("w-full p-2 !bg-[#f3f6fc]"):
                         # 1/3 : deadline
-                        with ui.column():
+                        with ui.column().classes("p-0 gap-1"):
                             ui.label("Deadline").classes(AT_TODO_PROPERTIES_HEADING)
                             self.deadline_input = ui.input(value=self.todo_dict["deadline"]).props(
                                 "dense borderless").classes(
                                 AT_PROPERTY_SELECTOR_STYLE)
+                            with self.deadline_input as date_input:
+                                with ui.menu().props('no-parent-event') as menu_container:
+                                    #TODO Explain more precisely what’s going on here with bind_value
+                                    with ui.date().bind_value(date_input).props('mask="DD/MM/YYYY"'):
+                                        with ui.row().classes('justify-end'):
+                                            ui.button('Save deadline', on_click=menu_container.close).props('flat')
+                                with date_input.add_slot('append'):
+                                    ui.icon('edit_calendar').on('click', menu_container.open).classes('cursor-pointer')
+
                         # 2/3 : creation date
-                        with ui.column():
+                        with ui.column().classes("p-0 gap-1"):
                             ui.label("Created on").classes(AT_TODO_PROPERTIES_HEADING)
                             self.created_time_label = ui.label(text=f"{self.todo_dict["created_time"]}").classes(
                                 AT_DATE_LABEL_STYLE).props(
                                 'dense borderless')
 
                         # 3/3 : last modified time
-                        with ui.column():
+                        with ui.column().classes("p-0 gap-1"):
                             ui.label("Modified on").classes(AT_TODO_PROPERTIES_HEADING)
                             self.modified_time_label = ui.label(text=f"{self.todo_dict["modified_time"]}").classes(
                                 AT_DATE_LABEL_STYLE).props(
                                 'dense borderless')
 
-                # 3rd SECTION (2 cols in a row) : COMMENTS & FILE ATTACHMENTS
-                with ui.row(wrap=False).classes("w-full p-2 !bg-[#f3f6fc]"):
-                    # 1/2 : comments section
-                    with ui.column().classes('w-[70%]'):
+                # 3rd SECTION (row) : COMMENTS
+                with ui.row(wrap=False).classes("w-full px-2 py-0 !bg-[#f3f6fc]"):
+                    with ui.column().classes('w-[100%] pl-2 py-0 gap-1'):
                         ui.label("Comments").classes(AT_TODO_PROPERTIES_HEADING)
                         self.comments_editor = ui.editor(placeholder='Type something here').classes("w-full")
-                    # 2/2 : file upload section
-                    with ui.column().classes('w-[30%]'):
-                        ui.label(" ").classes(AT_TODO_PROPERTIES_HEADING)
-                        ui.label(" ").classes(AT_TODO_PROPERTIES_HEADING)
-                        with ui.row().classes("w-full justify-between items-center"):
-                            # Get folder’s name as saved in the database
-                            todo_folder_name_saved_in_database = self.todo_dict["attachment_dir"]
-                            # Display folder’s name in UI
-                            folder_name_label = ui.label(text=f"📁 {todo_folder_name_saved_in_database}")
-                            # Getting values, and implement logic, to display it nicely in the UI
-                            files_count: int = self.file_manager.get_folder_files_count(todo_folder_name_saved_in_database)
-                            folder_files_name_list: list = self.file_manager.visualize_folder_files_names(todo_folder_name_saved_in_database)
-                            folder_files_names: str = "    ".join([f"📄 {file}" for file in folder_files_name_list])
-                            if files_count > 0:
-                                ui.label(text=f"{files_count} files saved: \n{folder_files_names}").style(
-                                    'white-space: pre-wrap;')
-                            elif files_count == 0:
-                                ui.label(text="No files saved yet.")
 
+                # 4TH SECTION (row) : ATTACHMENTS
+                with ui.column().classes("gap-1 w-full"):
+                    ui.label("Attachments").classes(f"pl-4 py-0 {AT_TODO_PROPERTIES_HEADING} gap-0")
+                    with ui.row(wrap=False).classes("w-full px-2 !bg-[#f3f6fc]"):
+                        with ui.column().classes('w-[70%] ml-2 p-2 gap-0 bg-white rounded-md shadow-[0_0_1px_0_rgba(0,0,0,0.32),0_1px_3px_0_rgba(0,0,0,0.08)]'):
+                            with ui.row().classes("w-full justify-between items-center"):
+                                # Get folder’s name as saved in the database
+                                todo_folder_name_saved_in_database = self.todo_dict["attachment_dir"]
+                                # Display folder’s name in UI
+                                folder_name_label = ui.label(text=f"📁 {todo_folder_name_saved_in_database}")
+                                # Getting values, and implement logic, to display it nicely in the UI
+                                files_count: int = self.file_manager.get_folder_files_count(todo_folder_name_saved_in_database)
+                                folder_files_name_list: list = self.file_manager.visualize_folder_files_names(todo_folder_name_saved_in_database)
+                                folder_files_names: str = "    ".join([f"📄 {file}" for file in folder_files_name_list])
+                                if files_count > 0:
+                                    ui.label(text=f"{files_count} files saved: \n{folder_files_names}").style(
+                                        'white-space: pre-wrap;')
+                                elif files_count == 0:
+                                    ui.label(text="No files saved yet.")
+                        with ui.column().classes('w-[30%]'):
                             self.attachment_dir_label = ui.upload(multiple=True, on_upload=lambda e:self.file_manager.temporary_save_uploaded_files(e)).classes(AT_UPLOAD_ZONE_STYLE).props(
                                 'dense borderless')
         return self.todo_id

@@ -28,7 +28,7 @@ AT_PROPERTY_SELECTOR_STYLE = (
 )
 
 # Style for to-do details window mini properties heading
-AT_TODO_PROPERTIES_HEADING = 'font-inter text-zinc-900 text-[13px] leading-[1.5] font-medium'
+AT_TODO_PROPERTIES_HEADING = 'font-inter text-zinc-900 text-[13px] font-medium'
 
 # Style for to-do details window date type labels
 AT_DATE_LABEL_STYLE = (
